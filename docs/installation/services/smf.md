@@ -14,11 +14,11 @@ In the console, navigate to your user’s home directory: `cd ~`
 
 Now download using wget, replacing the url with the url for the package you just retrieved
 
-    wget http://download.simplemachines.org/index.php?thanks;filename=smf_2-0-11_install.zip
+    wget http://download.simplemachines.org/index.php?thanks;filename=smf_2-0-13_install.zip
 
 This needs to be unpackaged. Unzip it, replacing the file name with that of the file you just downloaded
 
-    unzip smf_2-0-11_install.zip
+    unzip smf_2-0-13_install.zip
 
 Now we need to move this to our web directory. Usually `/var/www/forums`.
 
@@ -29,7 +29,7 @@ The web server needs read/write permission to this folder
     sudo chown -R www-data:www-data /var/www/forums
 
 ### Web Install
-Navigate to http://yourdomain.com/forums where you will be presented with an installer.
+Navigate to http://example.com/forums where you will be presented with an installer.
 
 Click on the `Install` tab.
 

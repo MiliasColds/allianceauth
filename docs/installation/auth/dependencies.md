@@ -31,6 +31,7 @@ Required for phpBB, smf, evernus alliance market, etc
 
 ### Java
 Required for hosting jabber server
+
     oracle-java8-installer
 
 ## CentOS 7
@@ -45,7 +46,7 @@ Required for base auth site
 
 #### Python
 
-    python python-devel MySQL-python python-setuptools  mysql-connector-python python-pip
+    python python-devel MySQL-python python-setuptools  mysql-connector-python python-pip bzip2-devel
 
 #### MySQL
 
@@ -53,7 +54,7 @@ Required for base auth site
 
 #### Utilities
 
-    screen gcc unzip git redis curl nano
+    screen gcc gcc-c++ unzip git redis curl nano
 
 ### Apache
 Required for displaying web content

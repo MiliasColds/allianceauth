@@ -1,16 +1,22 @@
 # CentOS Installation
 
-It’s recommended to update all packages before proceeding.
+It's recommended to update all packages before proceeding.
     `sudo yum update`
     `sudo yum upgrade`
     `sudo reboot`
 
-Now install all [dependencies](dependencies.md). For this guide you'll need the optional [JDK](dependencies.md) and [Apache](dependencies.md) sections as well.
+Now install all [dependencies](dependencies.md).
 
     sudo yum install xxxxxxx
+
 replacing the x's with the list of packages.
 
-For security and permissions, it’s highly recommended you create a user to install under who is not the root account.
+Make sure redis is running before continuing:
+
+    systemctl enable redis.service
+    systemctl start redis.service
+
+For security and permissions, it's highly recommended you create a user to install under who is not the root account.
 
     sudo adduser allianceserver
     sudo passwd allianceserver
@@ -23,9 +29,9 @@ Find the line which says `root    ALL=(ALL)       ALL` - beneath it add another 
 
 **From this point on you need to be logged in as the allianceserver user**
 
-start your mariadb server `sudo systemctl start mariadb`
+Start your mariadb server `sudo systemctl start mariadb`
 
-secure your MYSQL / Maria-db server by typing `mysql_secure_installation `
+Secure your MYSQL / Maria-db server by typing `mysql_secure_installation `
 
 AllianceAuth needs a MySQL user account. Create one as follows, replacing `PASSWORD` with an actual secure password:
 
@@ -45,9 +51,13 @@ Ensure you are in the allianceserver home directory by issuing `cd`
 
 Now we clone the source code:
 
-    git clone https://github.com/R4stl1n/allianceauth.git
+    git clone https://github.com/allianceauth/allianceauth.git
 
 Enter the folder by issuing `cd allianceauth`
+
+Ensure you're on the latest version with the following:
+
+    git tag | sort -n | tail -1 | xargs git checkout
 
 Python package dependencies can be installed from the requirements file:
 
@@ -57,7 +67,7 @@ The settings file needs configuring. See this lengthy guide for specifics.
 
 Django needs to install models to the database before it can start.
 
-    python manage.py syncdb
+    python manage.py migrate
 
 AllianceAuth needs to generate corp and alliance models before it can assign users to them.
 

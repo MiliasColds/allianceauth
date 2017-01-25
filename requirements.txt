@@ -5,7 +5,6 @@ dnspython
 passlib
 requests>=2.9.1
 bcrypt
-zeroc-ice
 slugify
 requests-oauthlib
 sleekxmpp
@@ -16,12 +15,15 @@ django>=1.10,<2.0
 django-bootstrap-form
 django-navhelper
 django-bootstrap-pagination
+django-redis>=4.4
 
 # awating release for fix to celery/django-celery#447
 # django-celery
 git+https://github.com/celery/django-celery
 
 git+git://github.com/nikdoof/python-ts3.git
-git+https://github.com/pyghassen/openfire-restapi
+
+# awating pyghassen/openfire-restapi #1 to fix installation issues
+git+https://github.com/adarnof/openfire-restapi
 
 git+https://github.com/adarnof/adarnauth-esi

@@ -12,7 +12,6 @@ from services.managers.eve_api_manager import EveApiManager
 from eveonline.models import EveCharacter
 from eveonline.models import EveCorporationInfo
 from eveonline.models import EveAllianceInfo
-from eveonline.providers import eve_adapter_factory
 from authentication.tasks import set_state
 import logging
 import evelink
@@ -77,7 +76,7 @@ def refresh_user_apis(user):
     for x in apis:
         refresh_api(x)
     # Check our main character
-    auth = AuthServicesInfo.objects.get_or_create(user=user)[0]
+    auth = AuthServicesInfo.objects.get(user=user)
     if auth.main_char_id:
         if EveCharacter.objects.filter(character_id=auth.main_char_id).exists() is False:
             logger.info(
