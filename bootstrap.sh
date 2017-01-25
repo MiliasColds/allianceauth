@@ -7,13 +7,19 @@ sudo apt-get update
 
 sudo apt-get clean
 
-sudo apt-get -y install libtool redis-server
+sudo apt-get -y install libtool
 sudo apt-get -y install git
 sudo apt-get -y install python-dev libyaml-dev libffi-dev
 sudo apt-get -y install python-pip
 sudo apt-get -y install mysql-server mysql-client libmysqlclient-dev
-sudo apt-get -y install g++
+sudo apt-get -y install g++ make
 sudo apt-get -y install build-essential libbz2-dev
+git clone https://github.com/antirez/redis.git
+cd redis
+make
+sudo make install
+cd util
+sudo y y y y | ./install_server.sh
 cd /vagrant/
 
 sudo pip install --upgrade pip

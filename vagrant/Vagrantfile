@@ -21,10 +21,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     v.memory = 1024
     v.cpus = 2
   end
+  #config.vm.network "public_network"
   
-  config.vm.network :forwarded_port, guest: 3306, host: 3306
+  config.vm.network :forwarded_port, guest: 3306, host: 3396
   config.vm.network :forwarded_port, guest: 9090, host: 9090
   config.vm.network :forwarded_port, guest: 8000, host: 8000
+# config.vm.network :forwarded_port, host:3306, guest:3396
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "../", "/vagrant"
