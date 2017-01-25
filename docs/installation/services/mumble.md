@@ -11,6 +11,10 @@ The mumble server package can be retrieved from a repository we need to add, mum
 Now two packages need to be installed:
 
     sudo apt-get install python-software-properties mumble-server
+    
+You will also need to install the python dependencies for the authenticator script:
+    
+    pip install -r thirdparty/Mumble/requirements.txt
 
 ## Configuring Mumble
 Mumble ships with a configuration file that needs customization. By default it’s located at /etc/mumble-server.ini. Open it with your favourite text editor:
@@ -21,7 +25,7 @@ REQUIRED: To enable the ICE authenticator, edit the following:
 
  - `icesecretwrite=MY_CLEVER_PASSWORD`, obviously choosing a secure password
 
-To customize the database, edit the following:
+By default mumble operates on sqlite which is fine, but slower than a dedicated MySQL server. To customize the database, edit the following:
 
  - uncomment the database line, and change it to `database=alliance_mumble`
  - `dbDriver=QMYSQL`
@@ -30,7 +34,7 @@ To customize the database, edit the following:
  - `dbPort=3306`
  - `dbPrefix=murmur_`
 
-To name your root channel, uncomment and edit `registerName=` whatever cool name you want
+To name your root channel, uncomment and set `registerName=` to whatever cool name you want
 
 Save and close the file (control + O, control + X).
 
@@ -44,7 +48,7 @@ Now restart the server to see the changes reflected.
 
     sudo service mumble-server restart
 
-That’s it! Your server is ready to be connected to at yourdomain.com:64738
+That’s it! Your server is ready to be connected to at example.com:64738
 
 ## Configuring the Authenticator
 
@@ -64,7 +68,7 @@ Edit `authenticator.ini` and change these values:
 
 Test your configuration by starting it: `python authenticator.py`
 
-#Running the Authenticator
+## Running the Authenticator
 
 The authenticator needs to be running 24/7 to validate users on Mumble. The best way is to run it in a screen much like celery:
 

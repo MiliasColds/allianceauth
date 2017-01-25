@@ -40,13 +40,16 @@ Ensure you are in the allianceserver home directory by issuing `cd`
 
 Now we clone the source code:
 
-    git clone https://github.com/R4stl1n/allianceauth.git
+    git clone https://github.com/allianceauth/allianceauth.git
 
 Enter the folder by issuing `cd allianceauth`
 
+Ensure you're on the latest version with the following:
+
+    git tag | sort -n | tail -1 | xargs git checkout
+
 Python package dependencies can be installed from the requirements file:
 
-    sudo pip install requests>=2.9.1
     sudo pip install -r requirements.txt
 
 The settings file needs configuring. See [this lengthy guide](settings.md) for specifics.
