@@ -52,6 +52,15 @@
             <!-- /.navbar-header -->
 
             <ul class="nav navbar-top-links navbar-right">
+		<li class="nav-link">
+                   <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+                      <input type="hidden" name="cmd" value="_s-xclick">
+                      <input type="hidden" name="hosted_button_id" value="JY39QPMGK9CE8">
+                      <div display="flex" align-items="bottom">
+                         <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+                      </div>
+                   </form>
+                </li>
                 <li class="nav-link">
                     <form id="f_lang_select" action="{% url 'set_language' %}" method="post">
                         {% csrf_token %}

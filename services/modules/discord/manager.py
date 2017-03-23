@@ -32,8 +32,30 @@ GROUP_CACHE_MAX_AGE = datetime.timedelta(minutes=30)
 
 
 class DiscordOAuthManager:
+    remaining_api=10
+    reset_value=10
+    reset_on=datetime.datetime.now()+datetime.timedelta(minutes=1)
+    
     def __init__(self):
         pass
+
+    @staticmethod
+    def Limit_API():
+        if(datetime.datetime.now() > DiscordOAuthManager.reset_on):
+            DiscordOAuthManager.remaining_api = DiscordOAuthManager.reset_value
+        if(DiscordOAuthManager.remaining_api ==1):
+            time.sleep((DiscordOAuthManager.reset_on - datetime.datetime.now()).seconds * 1000)
+            DiscordOAuthManager.remaining_api = DiscordOAuthManager.reset_value
+
+    @staticmethod
+    def Check_Limit(response):
+        logger.debug(response.headers)
+        if('X-RateLimit-Limit' in response.headers):
+            DiscordOAuthManager.reset_value = int(response.headers['X-RateLimit-Limit'])
+        if('X-RateLimit-Reset' in response.headers):
+            DiscordOAuthManager.reset_on = datetime.datetime.fromtimestamp(int(response.headers['X-RateLimit-Reset']))
+        if('X-RateLimit-Reamining' in response.headers):
+            DiscordOAuthManager.remaining_api = int(response.headers['X-RateLimit-Remaining'])
 
     @staticmethod
     def _sanitize_groupname(name):
@@ -64,13 +86,17 @@ class DiscordOAuthManager:
 
             custom_headers = {'accept': 'application/json', 'authorization': 'Bearer ' + token}
             path = DISCORD_URL + "/invites/" + str(settings.DISCORD_INVITE_CODE)
+            DiscordOAuthManager.Limit_API()
             r = requests.post(path, headers=custom_headers)
             logger.debug("Got status code %s after accepting Discord invite" % r.status_code)
+            DiscordOAuthManager.Check_Limit(r)
             r.raise_for_status()
 
             path = DISCORD_URL + "/users/@me"
+            DiscordOAuthManager.Limit_API()
             r = requests.get(path, headers=custom_headers)
             logger.debug("Got status code %s after retrieving Discord profile" % r.status_code)
+            DiscordOAuthManager.Check_Limit(r)
             r.raise_for_status()
 
             user_id = r.json()['id']
@@ -86,9 +112,11 @@ class DiscordOAuthManager:
             custom_headers = {'content-type': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
             data = {'nick': nickname, }
             path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
+            DiscordOAuthManager.Limit_API()
             r = requests.patch(path, headers=custom_headers, json=data)
             logger.debug("Got status code %s after setting nickname for Discord user ID %s (%s)" % (
                 r.status_code, user_id, nickname))
+            DiscordOAuthManager.Check_Limit(r)
             if r.status_code == 404:
                 logger.warn("Discord user ID %s could not be found in server." % user_id)
                 return True
@@ -103,11 +131,13 @@ class DiscordOAuthManager:
         try:
             custom_headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
             path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
+            DiscordOAuthManager.Limit_API()
             r = requests.delete(path, headers=custom_headers)
             logger.debug("Got status code %s after removing Discord user ID %s" % (r.status_code, user_id))
             if r.status_code == 404:
                 logger.warn("Discord user ID %s already left the server." % user_id)
                 return True
+            DiscordOAuthManager.Check_Limit(r)
             r.raise_for_status()
             return True
         except:
@@ -118,8 +148,10 @@ class DiscordOAuthManager:
     def __get_groups():
         custom_headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/roles"
+        DiscordOAuthManager.Limit_API()
         r = requests.get(path, headers=custom_headers)
         logger.debug("Got status code %s after retrieving Discord roles" % r.status_code)
+        DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
         return r.json()
 
@@ -164,8 +196,10 @@ class DiscordOAuthManager:
     def __generate_role():
         custom_headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/roles"
+        DiscordOAuthManager.Limit_API()
         r = requests.post(path, headers=custom_headers)
         logger.debug("Received status code %s after generating new role." % r.status_code)
+        DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
         return r.json()
 
@@ -179,8 +213,10 @@ class DiscordOAuthManager:
             'permissions': permissions,
         }
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/roles/" + str(role_id)
+        DiscordOAuthManager.Limit_API()
         r = requests.patch(path, headers=custom_headers, data=json.dumps(data))
         logger.debug("Received status code %s after editing role id %s" % (r.status_code, role_id))
+        DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
         return r.json()
 
@@ -196,6 +232,8 @@ class DiscordOAuthManager:
         group_ids = [DiscordOAuthManager.__group_name_to_id(DiscordOAuthManager._sanitize_groupname(g)) for g in groups]
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
         data = {'roles': group_ids}
+        DiscordOAuthManager.Limit_API()
         r = requests.patch(path, headers=custom_headers, json=data)
         logger.debug("Received status code %s after setting user roles" % r.status_code)
+        DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
