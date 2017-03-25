@@ -3,10 +3,12 @@ import requests
 import json
 import re
 from django.conf import settings
+from django.core.cache import cache
 from services.models import GroupCache
 from requests_oauthlib import OAuth2Session
 import logging
 import datetime
+import time
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -29,33 +31,33 @@ SCOPES = [
 ]
 
 GROUP_CACHE_MAX_AGE = datetime.timedelta(minutes=30)
-
+cache.add('reset_value',10)
+cache.add('reset_on',datetime.datetime.now())
+cache.add('remaining_api',10)
 
 class DiscordOAuthManager:
-    remaining_api=10
-    reset_value=10
-    reset_on=datetime.datetime.now()+datetime.timedelta(minutes=1)
+    
     
     def __init__(self):
         pass
 
     @staticmethod
     def Limit_API():
-        if(datetime.datetime.now() > DiscordOAuthManager.reset_on):
-            DiscordOAuthManager.remaining_api = DiscordOAuthManager.reset_value
-        if(DiscordOAuthManager.remaining_api ==1):
-            time.sleep((DiscordOAuthManager.reset_on - datetime.datetime.now()).seconds * 1000)
-            DiscordOAuthManager.remaining_api = DiscordOAuthManager.reset_value
+        if(datetime.datetime.now() > cache.get('reset_on')):
+            cache.set('remaining_api',cache.get('reset_value'),None)
+        if(cache.get('remaining_api') ==1):
+            time.sleep((cache.get('reset_on') - datetime.datetime.now()).seconds+2)
+            cache.set('remaining_api',cache.get('reset_value'),None)
 
     @staticmethod
     def Check_Limit(response):
         logger.debug(response.headers)
         if('X-RateLimit-Limit' in response.headers):
-            DiscordOAuthManager.reset_value = int(response.headers['X-RateLimit-Limit'])
+            cache.set('reset_value', int(response.headers['X-RateLimit-Limit']),None)
         if('X-RateLimit-Reset' in response.headers):
-            DiscordOAuthManager.reset_on = datetime.datetime.fromtimestamp(int(response.headers['X-RateLimit-Reset']))
-        if('X-RateLimit-Reamining' in response.headers):
-            DiscordOAuthManager.remaining_api = int(response.headers['X-RateLimit-Remaining'])
+            cache.set('reset_on',datetime.datetime.fromtimestamp(int(response.headers['X-RateLimit-Reset'])),None)
+        if('X-RateLimit-Remaining' in response.headers):
+            cache.set('remaining_api',int(response.headers['X-RateLimit-Remaining']),None)
 
     @staticmethod
     def _sanitize_groupname(name):
