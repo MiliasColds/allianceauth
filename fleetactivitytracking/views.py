@@ -5,12 +5,15 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import ValidationError
+from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Q
 from eveonline.models import EveCharacter
 from eveonline.models import EveCorporationInfo
 from eveonline.managers import EveManager
+from authentication.models import AuthServicesInfo
 from fleetactivitytracking.forms import FatlinkForm
 from fleetactivitytracking.models import Fatlink, Fat
 
@@ -54,6 +57,24 @@ class CorpStat(object):
         return "%.2f" % (float(self.n_fats) / float(self.corp.member_count))
 
 
+class MemberStat(object):
+    def __init__(self, member, start_of_month, start_of_next_month, mainchid=None):
+        if mainchid:
+            self.mainchid = mainchid
+        else:
+            self.mainchid = AuthServicesInfo.objects.get(user_id=member['user_id']).main_char_id
+        self.mainchar = EveCharacter.objects.get(character_id=self.mainchid)
+        nchars = 0
+        for alliance_id in settings.STR_ALLIANCE_IDS:
+            nchars += EveCharacter.objects.filter(user_id=member['user_id']).filter(alliance_id=alliance_id).count()
+        self.n_chars = nchars
+        self.n_fats = Fat.objects.filter(user_id=member['user_id']).filter(
+            fatlink__fatdatetime__gte=start_of_month).filter(fatlink__fatdatetime__lte=start_of_next_month).count()
+        
+    def avg_fat(self):
+        return "%.2f" % (float(self.n_fats) / float(self.n_chars))
+
+
 def first_day_of_next_month(year, month):
     if month == 12:
         return datetime.datetime(year + 1, 1, 1)
@@ -89,6 +110,41 @@ def fatlink_view(request):
 
 @login_required
 @permission_required('auth.fleetactivitytracking_statistics')
+def fatlink_statistics_corp_view(request, corpid, year=None, month=None):
+    if year is None:
+        year = datetime.date.today().year
+    if month is None:
+        month = datetime.date.today().month
+
+    year = int(year)
+    month = int(month)
+    start_of_month = datetime.datetime(year, month, 1)
+    start_of_next_month = first_day_of_next_month(year, month)
+    start_of_previous_month = first_day_of_previous_month(year, month)
+    fat_stats = {}
+    corp_members = EveCharacter.objects.filter(corporation_id=corpid).values('user_id').distinct()
+
+    for member in corp_members:
+        try:
+            fat_stats[member['user_id']] = MemberStat(member, start_of_month, start_of_next_month)
+        except ObjectDoesNotExist:
+            continue
+
+    # collect and sort stats
+    stat_list = [fat_stats[x] for x in fat_stats]
+    stat_list.sort(key=lambda stat: stat.mainchar.character_name)
+    stat_list.sort(key=lambda stat: (stat.n_fats, stat.n_fats / stat.n_chars), reverse=True)
+    
+    context = {'fatStats': stat_list, 'month': start_of_month.strftime("%B"), 'year': year,
+           'previous_month': start_of_previous_month, 'corpid': corpid}
+    if datetime.datetime.now() > start_of_next_month:
+        context.update({'next_month': start_of_next_month})
+
+    return render(request, 'fleetactivitytracking/fatlinkstatisticscorpview.html', context=context)
+
+
+@login_required
+@permission_required('auth.fleetactivitytracking_statistics')
 def fatlink_statistics_view(request, year=datetime.date.today().year, month=datetime.date.today().month):
     year = int(year)
     month = int(month)
@@ -99,19 +155,16 @@ def fatlink_statistics_view(request, year=datetime.date.today().year, month=date
     fat_stats = {}
 
     # get FAT stats for member corps
-    for corp_id in settings.STR_CORP_IDS:
-        fat_stats[corp_id] = CorpStat(corp_id, start_of_month, start_of_next_month)
-    for alliance_id in settings.STR_ALLIANCE_IDS:
-        alliance_corps = EveCorporationInfo.objects.filter(alliance__alliance_id=alliance_id)
-        for corp in alliance_corps:
-            fat_stats[corp.corporation_id] = CorpStat(corp.corporation_id, start_of_month, start_of_next_month)
+    query = Q(corporation_id__in=settings.STR_CORP_IDS) | Q(alliance__alliance_id__in=settings.STR_ALLIANCE_IDS)
+    for corp in EveCorporationInfo.objects.filter(query).distinct():
+        fat_stats[corp.corporation_id] = CorpStat(corp.corporation_id, start_of_month, start_of_next_month)
 
     # get FAT stats for corps not in alliance
     fats_in_span = Fat.objects.filter(fatlink__fatdatetime__gte=start_of_month).filter(
         fatlink__fatdatetime__lt=start_of_next_month).exclude(character__corporation_id__in=fat_stats)
 
-    for fat in fats_in_span:
-        if fat.character.corporation_id not in fat_stats:
+    for fat in fats_in_span.exclude(character__corporation_id__in=fat_stats):
+        if EveCorporationInfo.objects.filter(corporation_id=fat.character.corporation_id).exists():
             fat_stats[fat.character.corporation_id] = CorpStat(fat.character.corporation_id, start_of_month,
                                                                start_of_next_month)
 
@@ -120,12 +173,10 @@ def fatlink_statistics_view(request, year=datetime.date.today().year, month=date
     stat_list.sort(key=lambda stat: stat.corp.corporation_name)
     stat_list.sort(key=lambda stat: (stat.n_fats, stat.n_fats / stat.corp.member_count), reverse=True)
 
+    context = {'fatStats': stat_list, 'month': start_of_month.strftime("%B"), 'year': year,
+           'previous_month': start_of_previous_month}
     if datetime.datetime.now() > start_of_next_month:
-        context = {'fatStats': stat_list, 'month': start_of_month.strftime("%B"), 'year': year,
-                   'previous_month': start_of_previous_month, 'next_month': start_of_next_month}
-    else:
-        context = {'fatStats': stat_list, 'month': start_of_month.strftime("%B"), 'year': year,
-                   'previous_month': start_of_previous_month}
+        context.update({'next_month': start_of_next_month})
 
     return render(request, 'fleetactivitytracking/fatlinkstatisticsview.html', context=context)
 
@@ -205,7 +256,7 @@ def click_fatlink_view(request, token, hash, fatname):
 
             if character:
                 # get data
-		c = token.get_esi_client(Location='v1', Universe='v2')
+	        c = token.get_esi_client(Location='v1', Universe='v2')
                 location = c.Location.get_characters_character_id_location(character_id=token.character_id).result()
                 ship = c.Location.get_characters_character_id_ship(character_id=token.character_id).result()
                 location['solar_system_name'] = \
@@ -233,7 +284,7 @@ def click_fatlink_view(request, token, hash, fatname):
                 try:
                     fat.full_clean()
                     fat.save()
-                    messages.success(request, 'Fleet participation registered.')
+                    messages.success(request, _('Fleet participation registered.'))
                 except ValidationError as e:
                     err_messages = []
                     for errorname, message in e.message_dict.items():
@@ -244,9 +295,10 @@ def click_fatlink_view(request, token, hash, fatname):
                            'character_name': token.character_name}
                 return render(request, 'fleetactivitytracking/characternotexisting.html', context=context)
         else:
-            messages.error(request, 'FAT link has expired.')
+            messages.error(request, _('FAT link has expired.'))
     except (ObjectDoesNotExist, KeyError):
-        messages.error(request, 'Invalid FAT link.')
+        logger.exception("Failed to process FAT link.")
+        messages.error(request, _('Invalid FAT link.'))
     return redirect('auth_fatlink_view')
 
 

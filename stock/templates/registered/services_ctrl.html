@@ -7,23 +7,23 @@
     <td class="text-center">
         {% ifequal username "" %}
             {% if urls.auth_activate %}
-            <a href="{% url urls.auth_activate %}" class="btn btn-warning">
+            <a href="{% url urls.auth_activate %}" title="Activate" class="btn btn-warning">
                 <span class="glyphicon glyphicon-ok"></span>
             </a>
             {% endif %}
         {% else %}
             {% if urls.auth_set_password %}
-            <a href="{% url urls.auth_set_password %}" class="btn btn-warning">
+            <a href="{% url urls.auth_set_password %}" title="Set Password" class="btn btn-warning">
                 <span class="glyphicon glyphicon-pencil"></span>
             </a>
             {% endif %}
             {% if urls.auth_reset_password %}
-            <a href="{% url urls.auth_reset_password %}" class="btn btn-primary">
+            <a href="{% url urls.auth_reset_password %}" title="Reset Password" class="btn btn-primary">
                 <span class="glyphicon glyphicon-refresh"></span>
             </a>
             {% endif %}
             {% if urls.auth_deactivate %}
-            <a href="{% url urls.auth_deactivate %}" class="btn btn-danger">
+            <a href="{% url urls.auth_deactivate %}" title="Deactivate" class="btn btn-danger">
                 <span class="glyphicon glyphicon-remove"></span>
             </a>
             {% endif %}

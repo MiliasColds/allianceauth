@@ -4,11 +4,9 @@
 {% load i18n %}
 {% get_current_language as LANGUAGE_CODE %}
 
-{% block title %}Alliance Auth - Structure Timer Create{% endblock %}
+{% block title %}{% trans "Alliance Auth - Structure Timer Create" %}{% endblock %}
 
 {% block page_title %}{% trans "Timer Create" %}{% endblock page_title %}
-{% block extra_css %}
-    <link href="{% static 'css/jquery.datetimepicker.css' %}" rel="stylesheet" type="text/css">{% endblock extra_css %}
 
 {% block content %}
     <div class="col-lg-12">
@@ -29,13 +27,3 @@
     </div>
 
 {% endblock content %}
-
-{% block extra_script %}
-
-    $('#id_eve_time').datetimepicker({
-    lang: '{{ LANGUAGE_CODE }}',
-    maskInput: true,
-    format: 'Y-m-d H:i',minDate:0
-    });
-
-{% endblock extra_script %}

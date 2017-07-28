@@ -26,15 +26,11 @@ class MumbleTasks:
 
     @staticmethod
     def disable_mumble():
-        if settings.ENABLE_AUTH_MUMBLE:
-            logger.warn("ENABLE_AUTH_MUMBLE still True, after disabling users will still be able to create mumble accounts")
-        if settings.ENABLE_BLUE_MUMBLE:
-            logger.warn("ENABLE_BLUE_MUMBLE still True, after disabling blues will still be able to create mumble accounts")
         logger.info("Deleting all MumbleUser models")
         MumbleUser.objects.all().delete()
 
     @staticmethod
-    @app.task(bind=True)
+    @app.task(bind=True, name="mumble.update_groups")
     def update_groups(self, pk):
         user = User.objects.get(pk=pk)
         logger.debug("Updating mumble groups for user %s" % user)
@@ -56,7 +52,7 @@ class MumbleTasks:
             logger.debug("User %s does not have a mumble account, skipping" % user)
 
     @staticmethod
-    @app.task
+    @app.task(name="mumble.update_all_groups")
     def update_all_groups():
         logger.debug("Updating ALL mumble groups")
         for mumble_user in MumbleUser.objects.exclude(username__exact=''):

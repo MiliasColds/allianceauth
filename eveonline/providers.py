@@ -228,7 +228,7 @@ class EveProvider(object):
 @python_2_unicode_compatible
 class EveSwaggerProvider(EveProvider):
     def __init__(self, token=None, adapter=None):
-        self.client = esi_client_factory(token=token)
+        self.client = esi_client_factory(token=token, Alliance='v1', Character='v4', Corporation='v2', Universe='v2')
         self.adapter = adapter or self
 
     def __str__(self):
@@ -244,7 +244,7 @@ class EveSwaggerProvider(EveProvider):
                 data['alliance_name'],
                 data['ticker'],
                 corps,
-                data['executor_corp'],
+                data['executor_corporation_id'],
             )
             return model
         except HTTPNotFound:
@@ -264,7 +264,7 @@ class EveSwaggerProvider(EveProvider):
             )
             return model
         except HTTPNotFound:
-            raise ObjectNotFound(id, 'corporation')
+            raise ObjectNotFound(corp_id, 'corporation')
 
     def get_character(self, character_id):
         try:
@@ -330,9 +330,9 @@ class EveXmlProvider(EveProvider):
             self.adapter,
             id,
             corpinfo['name'],
+            corpinfo['ticker'],
             corpinfo['ceo']['id'],
             corpinfo['members']['current'],
-            corpinfo['ticker'],
             corpinfo['alliance']['id'] if corpinfo['alliance'] else None,
         )
         return model

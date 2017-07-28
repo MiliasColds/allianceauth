@@ -1,10 +1,8 @@
 from __future__ import unicode_literals
 from django.conf import settings
-from celery.task import periodic_task
 from django.contrib.auth.models import User
 from notifications import notify
 from celery import task
-from celery.task.schedules import crontab
 from authentication.models import AuthServicesInfo
 from eveonline.managers import EveManager
 from eveonline.models import EveApiKeyPair
@@ -12,14 +10,17 @@ from services.managers.eve_api_manager import EveApiManager
 from eveonline.models import EveCharacter
 from eveonline.models import EveCorporationInfo
 from eveonline.models import EveAllianceInfo
+from eveonline.providers import eve_adapter_factory, ObjectNotFound
 from authentication.tasks import set_state
 import logging
 import evelink
 
+from alliance_auth.celeryapp import app
+
 logger = logging.getLogger(__name__)
 
 
-@task
+@app.task
 def refresh_api(api):
     logger.debug('Running update on api key %s' % api.api_id)
     still_valid = True
@@ -69,12 +70,13 @@ def refresh_api(api):
                    level="danger")
 
 
-@task
-def refresh_user_apis(user):
+@app.task
+def refresh_user_apis(pk):
+    user = User.objects.get(pk=pk)
     logger.debug('Refreshing all APIs belonging to user %s' % user)
     apis = EveApiKeyPair.objects.filter(user=user)
     for x in apis:
-        refresh_api(x)
+        refresh_api.apply(args=(x,))
     # Check our main character
     auth = AuthServicesInfo.objects.get(user=user)
     if auth.main_char_id:
@@ -90,54 +92,65 @@ def refresh_user_apis(user):
     set_state(user)
 
 
-@periodic_task(run_every=crontab(minute=0, hour="*/3"))
+@app.task
 def run_api_refresh():
     if not EveApiManager.check_if_api_server_online():
         logger.warn("Aborted scheduled API key refresh: API server unreachable")
         return
 
     for u in User.objects.all():
-        refresh_user_apis.delay(u)
+        refresh_user_apis.delay(u.pk)
 
 
-@task
-def update_corp(id):
-    EveManager.update_corporation(id)
+@app.task
+def update_corp(id, is_blue=None):
+    EveManager.update_corporation(id, is_blue=is_blue)
 
-@task
-def update_alliance(id):
-    EveManager.update_alliance(id)
+
+@app.task
+def update_alliance(id, is_blue=None):
+    EveManager.update_alliance(id, is_blue=is_blue)
     EveManager.populate_alliance(id)
 
 
-@periodic_task(run_every=crontab(minute=0, hour="*/2"))
+@app.task
 def run_corp_update():
     if not EveApiManager.check_if_api_server_online():
         logger.warn("Aborted updating corp and alliance models: API server unreachable")
         return
 
     # generate member corps
-    for corp_id in settings.STR_CORP_IDS:
-        if EveCorporationInfo.objects.filter(corporation_id=corp_id).exists():
-            update_corp(corp_id)
-        else:
-            EveManager.create_corporation(corp_id)
+    for corp_id in settings.STR_CORP_IDS + settings.STR_BLUE_CORP_IDS:
+        is_blue = True if corp_id in settings.STR_BLUE_CORP_IDS else False
+        try:
+            if EveCorporationInfo.objects.filter(corporation_id=corp_id).exists():
+                update_corp.apply(args=(corp_id,), kwargs={'is_blue': is_blue})
+            else:
+                EveManager.create_corporation(corp_id, is_blue=is_blue)
+        except ObjectNotFound:
+            logger.warn('Bad corp ID in settings: %s' % corp_id)
 
     # generate member alliances
-    for alliance_id in settings.STR_ALLIANCE_IDS:
-        if EveAllianceInfo.objects.filter(alliance_id=alliance_id).exists():
-            logger.debug("Updating existing owner alliance model with id %s" % alliance_id)
-            update_alliance(alliance_id)
-        else:
-            EveManager.create_alliance(alliance_id)
-            EveManager.populate_alliance(alliance_id)
+    for alliance_id in settings.STR_ALLIANCE_IDS + settings.STR_BLUE_ALLIANCE_IDS:
+        is_blue = True if alliance_id in settings.STR_BLUE_ALLIANCE_IDS else False
+        try:
+            if EveAllianceInfo.objects.filter(alliance_id=alliance_id).exists():
+                logger.debug("Updating existing owner alliance model with id %s" % alliance_id)
+                update_alliance(alliance_id, is_blue=is_blue)
+            else:
+                EveManager.create_alliance(alliance_id, is_blue=is_blue)
+                EveManager.populate_alliance(alliance_id)
+        except ObjectNotFound:
+            logger.warn('Bad alliance ID in settings: %s' % alliance_id)
 
     # update existing corp models
-    for corp in EveCorporationInfo.objects.all():
+    for corp in EveCorporationInfo.objects.exclude(
+            corporation_id__in=settings.STR_CORP_IDS + settings.STR_BLUE_CORP_IDS):
         update_corp.delay(corp.corporation_id)
 
     # update existing alliance models
-    for alliance in EveAllianceInfo.objects.all():
+    for alliance in EveAllianceInfo.objects.exclude(
+            alliance_id__in=settings.STR_ALLIANCE_IDS + settings.STR_BLUE_ALLIANCE_IDS):
         update_alliance.delay(alliance.alliance_id)
 
     try:
@@ -177,7 +190,7 @@ def run_corp_update():
                     logger.info("Alliance %s no longer meets minimum blue standing threshold" % alliance)
                     alliance.is_blue = False
                     alliance.save()
-            else:
+            elif alliance.alliance_id not in settings.STR_BLUE_ALLIANCE_IDS:
                 logger.info("Alliance %s no longer in standings" % alliance)
                 alliance.is_blue = False
                 alliance.save()
@@ -189,7 +202,7 @@ def run_corp_update():
                     logger.info("Corp %s no longer meets minimum blue standing threshold" % corp)
                     corp.is_blue = False
                     corp.save()
-            else:
+            elif corp.corporation_id not in settings.STR_BLUE_CORP_IDS:
                 if corp.alliance:
                     if not corp.alliance.is_blue:
                         logger.info("Corp %s and its alliance %s are no longer blue" % (corp, corp.alliance))
@@ -203,22 +216,8 @@ def run_corp_update():
         logger.error("Model update failed with error code %s" % e.code)
 
     # delete unnecessary alliance models
-    for alliance in EveAllianceInfo.objects.filter(is_blue=False):
-        logger.debug("Checking to delete alliance %s" % alliance)
-        if not alliance.alliance_id in settings.STR_ALLIANCE_IDS:
-            logger.info("Deleting unnecessary alliance model %s" % alliance)
-            alliance.delete()
+    EveAllianceInfo.objects.filter(is_blue=False).exclude(alliance_id__in=settings.STR_ALLIANCE_IDS).delete()
 
     # delete unnecessary corp models
-    for corp in EveCorporationInfo.objects.filter(is_blue=False):
-        logger.debug("Checking to delete corp %s" % corp)
-        if not corp.corporation_id in settings.STR_CORP_IDS:
-            logger.debug("Corp %s is not member corp" % corp)
-            if corp.alliance:
-                logger.debug("Corp %s has alliance %s" % (corp, corp.alliance))
-                if not corp.alliance.alliance_id in settings.STR_ALLIANCE_IDS:
-                    logger.info("Deleting unnecessary corp model %s" % corp)
-                    corp.delete()
-            else:
-                logger.info("Deleting unnecessary corp model %s" % corp)
-                corp.delete()
+    EveCorporationInfo.objects.filter(is_blue=False).exclude(corporation_id__in=settings.STR_CORP_IDS).exclude(
+        alliance__alliance_id__in=settings.STR_ALLIANCE_IDS).delete()

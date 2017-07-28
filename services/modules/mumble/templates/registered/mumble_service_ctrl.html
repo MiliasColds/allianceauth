@@ -1,0 +1,25 @@
+<tr>
+    <td class="text-center">{{ service_name }}</td>
+    <td class="text-center">{{ username }}</td>
+    <td class="text-center"><a href="mumble://{{ service_url }}">{{ service_url }}</a></td>
+    <td class="text-center">
+        {% ifequal username "" %}
+            <a href="{% url urls.auth_activate %}" title="Activate" class="btn btn-warning">
+                <span class="glyphicon glyphicon-ok"></span>
+            </a>
+        {% else %}
+            <a href="{% url urls.auth_set_password %}" title="Set Password" class="btn btn-warning">
+                <span class="glyphicon glyphicon-pencil"></span>
+            </a>
+            <a href="{% url urls.auth_reset_password %}" title="Reset Password" class="btn btn-primary">
+                <span class="glyphicon glyphicon-refresh"></span>
+            </a>
+            <a href="{% url urls.auth_deactivate %}" title="Deactivate" class="btn btn-danger">
+                <span class="glyphicon glyphicon-remove"></span>
+            </a>
+            <a  href="mumble://{{ connect_url }}" class="btn btn-success" title="Connect">
+                <span class="glyphicon glyphicon-arrow-right"></span>
+            </a>
+        {% endifequal %}
+    </td>
+</tr>

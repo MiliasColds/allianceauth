@@ -20,6 +20,8 @@ class MumbleService(ServicesHook):
         self.name = 'mumble'
         self.urlpatterns = urlpatterns
         self.service_url = settings.MUMBLE_URL
+        self.access_perm = 'mumble.access_mumble'
+        self.service_ctrl_template = 'registered/mumble_service_ctrl.html'
 
     def delete_user(self, user, notify_user=False):
         logging.debug("Deleting user %s %s account" % (user, self.name))
@@ -42,11 +44,8 @@ class MumbleService(ServicesHook):
         logger.debug("Updating all %s groups" % self.name)
         MumbleTasks.update_all_groups.delay()
 
-    def service_enabled_members(self):
-        return settings.ENABLE_AUTH_MUMBLE or False
-
-    def service_enabled_blues(self):
-        return settings.ENABLE_BLUE_MUMBLE or False
+    def service_active_for_user(self, user):
+        return user.has_perm(self.access_perm)
 
     def render_services_ctrl(self, request):
         urls = self.Urls()
@@ -59,6 +58,7 @@ class MumbleService(ServicesHook):
             'service_name': self.title,
             'urls': urls,
             'service_url': self.service_url,
+            'connect_url': request.user.mumble.username + '@' + self.service_url if MumbleTasks.has_account(request.user) else self.service_url,
             'username': request.user.mumble.username if MumbleTasks.has_account(request.user) else '',
         }, request=request)
 

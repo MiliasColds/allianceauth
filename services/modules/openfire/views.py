@@ -10,7 +10,7 @@ from eveonline.managers import EveManager
 from eveonline.models import EveCharacter
 from services.forms import ServicePasswordForm
 
-from .manager import OpenfireManager
+from .manager import OpenfireManager, PingBotException
 from .tasks import OpenfireTasks
 from .forms import JabberBroadcastForm
 from .models import OpenfireUser
@@ -21,9 +21,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+ACCESS_PERM = 'openfire.access_openfire'
+
 
 @login_required
-@members_and_blues()
+@permission_required(ACCESS_PERM)
 def activate_jabber(request):
     logger.debug("activate_jabber called by user %s" % request.user)
     character = EveManager.get_main_character(request.user)
@@ -49,7 +51,7 @@ def activate_jabber(request):
 
 
 @login_required
-@members_and_blues()
+@permission_required(ACCESS_PERM)
 def deactivate_jabber(request):
     logger.debug("deactivate_jabber called by user %s" % request.user)
     if OpenfireTasks.has_account(request.user) and OpenfireTasks.delete_user(request.user):
@@ -62,7 +64,7 @@ def deactivate_jabber(request):
 
 
 @login_required
-@members_and_blues()
+@permission_required(ACCESS_PERM)
 def reset_jabber_password(request):
     logger.debug("reset_jabber_password called by user %s" % request.user)
     if OpenfireTasks.has_account(request.user):
@@ -101,27 +103,29 @@ def jabber_broadcast_view(request):
         if form.is_valid():
             main_char = EveManager.get_main_character(request.user)
             logger.debug("Processing jabber broadcast for user %s with main character %s" % (request.user, main_char))
-            if main_char is not None:
-                message_to_send = form.cleaned_data[
-                                      'message'] + "\n##### SENT BY: " + "[" + main_char.corporation_ticker + "]" + \
-                                  main_char.character_name + " TO: " + \
-                                  form.cleaned_data['group'] + " WHEN: " + datetime.datetime.utcnow().strftime(
-                    "%Y-%m-%d %H:%M:%S") + " #####\n##### Replies are NOT monitored #####\n"
-                group_to_send = form.cleaned_data['group']
+            try:
+                if main_char is not None:
+                    message_to_send = form.cleaned_data[
+                                          'message'] + "\n##### SENT BY: " + "[" + main_char.corporation_ticker + "]" + \
+                                      main_char.character_name + " TO: " + \
+                                      form.cleaned_data['group'] + " WHEN: " + datetime.datetime.utcnow().strftime(
+                        "%Y-%m-%d %H:%M:%S") + " #####\n##### Replies are NOT monitored #####\n"
+                    group_to_send = form.cleaned_data['group']
 
-                OpenfireManager.send_broadcast_threaded(group_to_send, message_to_send, )
+                else:
+                    message_to_send = form.cleaned_data[
+                        'message'] + "\n##### SENT BY: " + "No character but can send pings?" + " TO: " + \
+                        form.cleaned_data['group'] + " WHEN: " + datetime.datetime.utcnow().strftime(
+                        "%Y-%m-%d %H:%M:%S") + " #####\n##### Replies are NOT monitored #####\n"
+                    group_to_send = form.cleaned_data['group']
 
-            else:
-                message_to_send = form.cleaned_data[
-                    'message'] + "\n##### SENT BY: " + "No character but can send pings?" + " TO: " + \
-                    form.cleaned_data['group'] + " WHEN: " + datetime.datetime.utcnow().strftime(
-                    "%Y-%m-%d %H:%M:%S") + " #####\n##### Replies are NOT monitored #####\n"
-                group_to_send = form.cleaned_data['group']
+                OpenfireManager.send_broadcast_message(group_to_send, message_to_send)
 
-                OpenfireManager.send_broadcast_threaded(group_to_send, message_to_send, )
+                messages.success(request, 'Sent jabber broadcast to %s' % group_to_send)
+                logger.info("Sent jabber broadcast on behalf of user %s" % request.user)
+            except PingBotException as e:
+                messages.error(request, e)
 
-            messages.success(request, 'Sent jabber broadcast to %s' % group_to_send)
-            logger.info("Sent jabber broadcast on behalf of user %s" % request.user)
     else:
         form = JabberBroadcastForm()
         form.fields['group'].choices = allchoices
@@ -133,7 +137,7 @@ def jabber_broadcast_view(request):
 
 
 @login_required
-@members_and_blues()
+@permission_required(ACCESS_PERM)
 def set_jabber_password(request):
     logger.debug("set_jabber_password called by user %s" % request.user)
     if request.method == 'POST':

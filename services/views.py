@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.utils.translation import ugettext_lazy as _
 
 from alliance_auth.hooks import get_hooks
 from authentication.decorators import members_and_blues
@@ -46,7 +47,6 @@ def fleet_formatter_view(request):
 
 
 @login_required
-@members_and_blues()
 def services_view(request):
     logger.debug("services_view called by user %s" % request.user)
     auth = AuthServicesInfo.objects.get(user=request.user)
@@ -55,7 +55,7 @@ def services_view(request):
         try:
             char = EveCharacter.objects.get(character_id=auth.main_char_id)
         except EveCharacter.DoesNotExist:
-            messages.warning(request, "There's a problem with your main character. Please select a new one.")
+            messages.warning(request, _("There's a problem with your main character. Please select a new one."))
 
     context = {'service_ctrls': []}
     for fn in get_hooks('services_hook'):

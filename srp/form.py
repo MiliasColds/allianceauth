@@ -21,12 +21,8 @@ class SrpFleetUserRequestForm(forms.Form):
     def clean_killboard_link(self):
         data = self.cleaned_data['killboard_link']
         if "zkillboard.com" not in data:
-            raise forms.ValidationError("Invalid Link. Please use zKillboard.com")
+            raise forms.ValidationError(_("Invalid Link. Please use zKillboard.com"))
         return data
-
-
-class SrpFleetUpdateCostForm(forms.Form):
-    srp_total_amount = forms.IntegerField(required=True, label=_("Total SRP Amount"))
 
 
 class SrpFleetMainUpdateForm(forms.Form):

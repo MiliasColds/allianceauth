@@ -25,11 +25,12 @@ class Teamspeak3Tasks:
     def delete_user(cls, user, notify_user=False):
         if cls.has_account(user):
             logger.debug("User %s has TS3 account %s. Deleting." % (user, user.teamspeak3.uid))
-            if Teamspeak3Manager.delete_user(user.teamspeak3.uid):
-                user.teamspeak3.delete()
-                if notify_user:
-                    notify(user, 'TeamSpeak3 Account Disabled', level='danger')
-                return True
+            with Teamspeak3Manager() as ts3man:
+                if ts3man.delete_user(user.teamspeak3.uid):
+                    user.teamspeak3.delete()
+                    if notify_user:
+                        notify(user, 'TeamSpeak3 Account Disabled', level='danger')
+                    return True
         return False
 
     @staticmethod
@@ -42,18 +43,12 @@ class Teamspeak3Tasks:
     @staticmethod
     @app.task()
     def run_ts3_group_update():
-        if settings.ENABLE_AUTH_TEAMSPEAK3 or settings.ENABLE_BLUE_TEAMSPEAK3:
-            logger.debug("TS3 installed. Syncing local group objects.")
-            Teamspeak3Manager._sync_ts_group_db()
+        logger.debug("TS3 installed. Syncing local group objects.")
+        with Teamspeak3Manager() as ts3man:
+            ts3man._sync_ts_group_db()
 
     @staticmethod
     def disable():
-        if settings.ENABLE_AUTH_TEAMSPEAK3:
-            logger.warn(
-                "ENABLE_AUTH_TEAMSPEAK3 still True, after disabling users will still be able to create teamspeak accounts")
-        if settings.ENABLE_BLUE_TEAMSPEAK3:
-            logger.warn(
-                "ENABLE_BLUE_TEAMSPEAK3 still True, after disabling blues will still be able to create teamspeak accounts")
         logger.info("Deleting all Teamspeak3Users")
         Teamspeak3User.objects.all().delete()
         logger.info("Deleting all UserTSgroup models")
@@ -65,7 +60,7 @@ class Teamspeak3Tasks:
         logger.info("Teamspeak3 disabled")
 
     @staticmethod
-    @app.task(bind=True)
+    @app.task(bind=True, name="teamspeak3.update_groups")
     def update_groups(self, pk):
         user = User.objects.get(pk=pk)
         logger.debug("Updating user %s teamspeak3 groups" % user)
@@ -80,7 +75,8 @@ class Teamspeak3Tasks:
                             groups[ts_group.ts_group_name] = ts_group.ts_group_id
             logger.debug("Updating user %s teamspeak3 groups to %s" % (user, groups))
             try:
-                Teamspeak3Manager.update_groups(user.teamspeak3.uid, groups)
+                with Teamspeak3Manager() as ts3man:
+                    ts3man.update_groups(user.teamspeak3.uid, groups)
                 logger.debug("Updated user %s teamspeak3 groups." % user)
             except TeamspeakError as e:
                 logger.error("Error occured while syncing TS groups for %s: %s" % (user, str(e)))
@@ -89,7 +85,7 @@ class Teamspeak3Tasks:
             logger.debug("User does not have a teamspeak3 account")
 
     @staticmethod
-    @app.task
+    @app.task(name="teamspeak3.update_all_groups")
     def update_all_groups():
         logger.debug("Updating ALL teamspeak3 groups")
         for user in Teamspeak3User.objects.exclude(uid__exact=''):

@@ -9,7 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from eveonline.managers import EveManager
 from notifications import notify
-from services.modules.discord.manager import DiscordOAuthManager
+from services.modules.discord.manager import DiscordOAuthManager, DiscordApiBackoff
 from services.tasks import only_one
 from .models import DiscordUser
 
@@ -60,7 +60,7 @@ class DiscordTasks:
             return True
 
     @staticmethod
-    @app.task(bind=True)
+    @app.task(bind=True, name='discord.update_groups')
     def update_groups(task_self, pk):
         user = User.objects.get(pk=pk)
         logger.debug("Updating discord groups for user %s" % user)
@@ -74,6 +74,10 @@ class DiscordTasks:
             logger.debug("Updating user %s discord groups to %s" % (user, groups))
             try:
                 DiscordOAuthManager.update_groups(user.discord.uid, groups)
+            except DiscordApiBackoff as bo:
+                logger.info("Discord group sync API back off for %s, "
+                            "retrying in %s seconds" % (user, bo.retry_after))
+                raise task_self.retry(countdown=bo.retry_after)
             except Exception as e:
                 if task_self:
                     logger.exception("Discord group sync failed for %s, retrying in 10 mins" % user)
@@ -86,14 +90,14 @@ class DiscordTasks:
             logger.debug("User does not have a discord account, skipping")
 
     @staticmethod
-    @app.task
+    @app.task(name='discord.update_all_groups')
     def update_all_groups():
         logger.debug("Updating ALL discord groups")
         for discord_user in DiscordUser.objects.exclude(uid__exact=''):
             DiscordTasks.update_groups.delay(discord_user.user.pk)
 
     @staticmethod
-    @app.task(bind=True)
+    @app.task(bind=True, name='discord.update_nickname')
     def update_nickname(self, pk):
         user = User.objects.get(pk=pk)
         logger.debug("Updating discord nickname for user %s" % user)
@@ -114,7 +118,7 @@ class DiscordTasks:
             logger.debug("User %s does not have a discord account" % user)
 
     @staticmethod
-    @app.task
+    @app.task(name='discord.update_all_nicknames')
     def update_all_nicknames():
         logger.debug("Updating ALL discord nicknames")
         for discord_user in DiscordUser.objects.exclude(uid__exact=''):
@@ -122,10 +126,4 @@ class DiscordTasks:
 
     @classmethod
     def disable(cls):
-        if settings.ENABLE_AUTH_DISCORD:
-            logger.warn(
-                "ENABLE_AUTH_DISCORD still True, after disabling users will still be able to link Discord accounts")
-        if settings.ENABLE_BLUE_DISCORD:
-            logger.warn(
-                "ENABLE_BLUE_DISCORD still True, after disabling blues will still be able to link Discord accounts")
         DiscordUser.objects.all().delete()

@@ -10,7 +10,7 @@ except ImportError:
 from django.test import TestCase, RequestFactory
 from django.conf import settings
 from django import urls
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User, Group, Permission
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import signals
 
@@ -22,6 +22,13 @@ from .tasks import Teamspeak3Tasks
 from .signals import m2m_changed_authts_group, post_save_authts, post_delete_authts
 
 MODULE_PATH = 'services.modules.teamspeak3'
+
+
+def add_permissions():
+    permission = Permission.objects.get(codename='access_teamspeak3')
+    members = Group.objects.get(name=settings.DEFAULT_AUTH_GROUP)
+    blues = Group.objects.get(name=settings.DEFAULT_BLUE_GROUP)
+    AuthUtils.add_permissions_to_groups([permission], [members, blues])
 
 
 class Teamspeak3HooksTestCase(TestCase):
@@ -46,6 +53,7 @@ class Teamspeak3HooksTestCase(TestCase):
             m2m_blue_group.ts_group.add(ts_blue_group)
             m2m_blue_group.save()
             self.service = Teamspeak3Service
+            add_permissions()
 
     def test_has_account(self):
         member = User.objects.get(username=self.member)
@@ -60,29 +68,29 @@ class Teamspeak3HooksTestCase(TestCase):
         member = User.objects.get(username=self.member)
         blue = User.objects.get(username=self.blue)
         none_user = User.objects.get(username=self.none_user)
-        self.assertTrue(service.service_enabled_members())
-        self.assertTrue(service.service_enabled_blues())
 
-        self.assertEqual(service.service_active_for_user(member), settings.ENABLE_AUTH_TEAMSPEAK3)
-        self.assertEqual(service.service_active_for_user(blue), settings.ENABLE_BLUE_TEAMSPEAK3)
+        self.assertTrue(service.service_active_for_user(member))
+        self.assertTrue(service.service_active_for_user(blue))
         self.assertFalse(service.service_active_for_user(none_user))
 
     @mock.patch(MODULE_PATH + '.tasks.Teamspeak3Manager')
     def test_update_all_groups(self, manager):
+        instance = manager.return_value.__enter__.return_value
         service = self.service()
         service.update_all_groups()
         # Check member and blue user have groups updated
-        self.assertTrue(manager.update_groups.called)
-        self.assertEqual(manager.update_groups.call_count, 2)
+        self.assertTrue(instance.update_groups.called)
+        self.assertEqual(instance.update_groups.call_count, 2)
 
     def test_update_groups(self):
         # Check member has Member group updated
         with mock.patch(MODULE_PATH + '.tasks.Teamspeak3Manager') as manager:
+            instance = manager.return_value.__enter__.return_value
             service = self.service()
             member = User.objects.get(username=self.member)
             service.update_groups(member)
-            self.assertTrue(manager.update_groups.called)
-            args, kwargs = manager.update_groups.call_args
+            self.assertTrue(instance.update_groups.called)
+            args, kwargs = instance.update_groups.call_args
             # update_groups(user.teamspeak3.uid, groups)
             self.assertEqual({'Member': 1}, args[1])  # Check groups
             self.assertEqual(self.member, args[0])  # Check uid
@@ -92,7 +100,7 @@ class Teamspeak3HooksTestCase(TestCase):
             service = self.service()
             none_user = User.objects.get(username=self.none_user)
             service.update_groups(none_user)
-            self.assertFalse(manager.update_user_groups.called)
+            self.assertFalse(manager.return_value.__enter__.return_value.update_user_groups.called)
 
     @mock.patch(MODULE_PATH + '.tasks.Teamspeak3Manager')
     def test_validate_user(self, manager):
@@ -106,7 +114,7 @@ class Teamspeak3HooksTestCase(TestCase):
         none_user = User.objects.get(username=self.none_user)
         Teamspeak3User.objects.create(user=none_user, uid='abc123', perm_key='132ACB')
         service.validate_user(none_user)
-        self.assertTrue(manager.delete_user.called)
+        self.assertTrue(manager.return_value.__enter__.return_value.delete_user.called)
         with self.assertRaises(ObjectDoesNotExist):
             none_teamspeak3 = User.objects.get(username=self.none_user).teamspeak3
 
@@ -118,7 +126,7 @@ class Teamspeak3HooksTestCase(TestCase):
         result = service.delete_user(member)
 
         self.assertTrue(result)
-        self.assertTrue(manager.delete_user.called)
+        self.assertTrue(manager.return_value.__enter__.return_value.delete_user.called)
         with self.assertRaises(ObjectDoesNotExist):
             teamspeak3_user = User.objects.get(username=self.member).teamspeak3
 
@@ -164,6 +172,7 @@ class Teamspeak3ViewsTestCase(TestCase):
             m2m_blue = AuthTS.objects.create(auth_group=Group.objects.get(name='Blue'))
             m2m_blue.ts_group.add(ts_blue_group)
             m2m_blue.save()
+            add_permissions()
 
     def login(self, user=None, password=None):
         if user is None:
@@ -175,11 +184,12 @@ class Teamspeak3ViewsTestCase(TestCase):
     def test_activate(self, manager, forms_manager):
         self.login()
         expected_username = 'auth_member'
-        manager.add_user.return_value = (expected_username, 'abc123')
+        instance = manager.return_value.__enter__.return_value
+        instance.add_user.return_value = (expected_username, 'abc123')
 
         response = self.client.get(urls.reverse('auth_activate_teamspeak3'))
 
-        self.assertTrue(manager.add_user.called)
+        self.assertTrue(instance.add_user.called)
         teamspeak3_user = Teamspeak3User.objects.get(user=self.member)
         self.assertTrue(teamspeak3_user.uid)
         self.assertTrue(teamspeak3_user.perm_key)
@@ -190,11 +200,12 @@ class Teamspeak3ViewsTestCase(TestCase):
     def test_activate_blue(self, manager, forms_manager):
         self.login(self.blue_user)
         expected_username = 'auth_blue'
-        manager.add_blue_user.return_value = (expected_username, 'abc123')
+        instance = manager.return_value.__enter__.return_value
+        instance.add_blue_user.return_value = (expected_username, 'abc123')
 
         response = self.client.get(urls.reverse('auth_activate_teamspeak3'))
 
-        self.assertTrue(manager.add_blue_user.called)
+        self.assertTrue(instance.add_blue_user.called)
         teamspeak3_user = Teamspeak3User.objects.get(user=self.blue_user)
         self.assertTrue(teamspeak3_user.uid)
         self.assertTrue(teamspeak3_user.perm_key)
@@ -206,15 +217,16 @@ class Teamspeak3ViewsTestCase(TestCase):
         self.login()
         expected_username = 'auth_member'
 
-        forms_manager._get_userid.return_value = '1234'
+        forms_instance = manager.return_value.__enter__.return_value
+        forms_instance._get_userid.return_value = '1234'
 
         Teamspeak3User.objects.update_or_create(user=self.member, defaults={'uid': '1234', 'perm_key': '5678'})
         data = {'username': 'auth_member'}
 
         response = self.client.post(urls.reverse('auth_verify_teamspeak3'), data)
 
-        self.assertTrue(manager.update_groups.called)
         self.assertRedirects(response, urls.reverse('auth_services'), target_status_code=200)
+        self.assertTrue(manager.return_value.__enter__.return_value.update_groups.called)
 
     @mock.patch(MODULE_PATH + '.tasks.Teamspeak3Manager')
     def test_deactivate(self, manager):
@@ -223,7 +235,7 @@ class Teamspeak3ViewsTestCase(TestCase):
 
         response = self.client.get(urls.reverse('auth_deactivate_teamspeak3'))
 
-        self.assertTrue(manager.delete_user.called)
+        self.assertTrue(manager.return_value.__enter__.return_value.delete_user.called)
         self.assertRedirects(response, expected_url=urls.reverse('auth_services'), target_status_code=200)
         with self.assertRaises(ObjectDoesNotExist):
             teamspeak3_user = User.objects.get(pk=self.member.pk).teamspeak3
@@ -234,7 +246,7 @@ class Teamspeak3ViewsTestCase(TestCase):
         self.login()
         Teamspeak3User.objects.create(user=self.member, uid='some member')
 
-        manager.generate_new_permissionkey.return_value = "valid_member", "123abc"
+        manager.return_value.__enter__.return_value.generate_new_permissionkey.return_value = "valid_member", "123abc"
 
         response = self.client.get(urls.reverse('auth_reset_teamspeak3_perm'))
 
@@ -242,7 +254,7 @@ class Teamspeak3ViewsTestCase(TestCase):
         ts3_user = Teamspeak3User.objects.get(uid='valid_member')
         self.assertEqual(ts3_user.uid, 'valid_member')
         self.assertEqual(ts3_user.perm_key, '123abc')
-        self.assertTrue(tasks_manager.update_groups.called)
+        self.assertTrue(tasks_manager.return_value.__enter__.return_value.update_groups.called)
 
     @mock.patch(MODULE_PATH + '.tasks.Teamspeak3Manager')
     @mock.patch(MODULE_PATH + '.views.Teamspeak3Manager')
@@ -250,7 +262,8 @@ class Teamspeak3ViewsTestCase(TestCase):
         self.login(self.blue_user)
         Teamspeak3User.objects.create(user=self.blue_user, uid='some member')
 
-        manager.generate_new_blue_permissionkey.return_value = "valid_blue", "123abc"
+        manager.return_value.__enter__.return_value.generate_new_blue_permissionkey.return_value = ("valid_blue",
+                                                                                                    "123abc")
 
         response = self.client.get(urls.reverse('auth_reset_teamspeak3_perm'))
 
@@ -258,7 +271,7 @@ class Teamspeak3ViewsTestCase(TestCase):
         ts3_user = Teamspeak3User.objects.get(uid='valid_blue')
         self.assertEqual(ts3_user.uid, 'valid_blue')
         self.assertEqual(ts3_user.perm_key, '123abc')
-        self.assertTrue(tasks_manager.update_groups.called)
+        self.assertTrue(tasks_manager.return_value.__enter__.return_value.update_groups.called)
 
 
 class Teamspeak3SignalsTestCase(TestCase):

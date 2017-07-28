@@ -41,7 +41,7 @@ class CorpStats(models.Model):
 
     def update(self):
         try:
-            c = self.token.get_esi_client()
+            c = self.token.get_esi_client(Character='v4', Corporation='v2')
             assert c.Character.get_characters_character_id(character_id=self.token.character_id).result()[
                        'corporation_id'] == int(self.corp.corporation_id)
             members = c.Corporation.get_corporations_corporation_id_members(
@@ -52,6 +52,7 @@ class CorpStats(models.Model):
             # the swagger spec doesn't have a maxItems count
             # manual testing says we can do over 350, but let's not risk it
             member_id_chunks = [member_ids[i:i + 255] for i in range(0, len(member_ids), 255)]
+            c = self.token.get_esi_client(Character='v1') # ccplease bump versions of whole resources
             member_name_chunks = [c.Character.get_characters_names(character_ids=id_chunk).result() for id_chunk in
                                   member_id_chunks]
             member_list = {}
@@ -118,6 +119,13 @@ class CorpStats(models.Model):
     def member_count(self):
         return len(self.members)
 
+    def user_count(self, members):
+        mainchars = []
+        for member in members:
+            if hasattr(member.main, 'character_name'):
+                mainchars.append(member.main.character_name)
+        return len(set(mainchars))
+
     @python_2_unicode_compatible
     class MemberObject(object):
         def __init__(self, character_id, character_name, show_apis=False):
@@ -128,8 +136,10 @@ class CorpStats(models.Model):
                 auth = AuthServicesInfo.objects.get(user=char.user)
                 try:
                     self.main = EveCharacter.objects.get(character_id=auth.main_char_id)
+                    self.main_user = self.main.character_name
                 except EveCharacter.DoesNotExist:
                     self.main = None
+                    self.main_user = ''
                 api = EveApiKeyPair.objects.get(api_id=char.api_id)
                 self.registered = True
                 if show_apis:
@@ -140,9 +150,11 @@ class CorpStats(models.Model):
                 self.main = None
                 self.api = None
                 self.registered = False
+                self.main_user = ''
             except EveApiKeyPair.DoesNotExist:
                 self.api = None
                 self.registered = False
+                self.main_user = ''
 
         def __str__(self):
             return self.character_name
@@ -152,8 +164,10 @@ class CorpStats(models.Model):
 
     def get_member_objects(self, user):
         show_apis = self.show_apis(user)
-        return sorted([CorpStats.MemberObject(id, name, show_apis=show_apis) for id, name in self.members.items()],
-                      key=attrgetter('character_name'))
+        member_list = [CorpStats.MemberObject(id, name, show_apis=show_apis) for id, name in self.members.items()]
+        outlist = sorted([m for m in member_list if m.main_user], key=attrgetter('main_user', 'character_name'))
+        outlist = outlist + sorted([m for m in member_list if not m.main_user], key=attrgetter('character_name'))
+        return outlist
 
     def can_update(self, user):
         return user.is_superuser or user == self.token.user
@@ -165,6 +179,7 @@ class CorpStats(models.Model):
             self.members = corpstats.get_member_objects(user)
             self.can_update = corpstats.can_update(user)
             self.total_members = len(self.members)
+            self.total_users = corpstats.user_count(self.members)
             self.registered_members = corpstats.entered_apis()
             self.show_apis = corpstats.show_apis(user)
             self.last_updated = corpstats.last_update

@@ -47,34 +47,6 @@ When changing these booleans, edit the setting within the brackets (eg `('AA_MEM
    - OAuth callback URL. Should be `https://mydomain.com/sso/callback`
 
 ## Services
-### Member Services
-After installing services, enable specific services for members by setting the following to `True`
-- [ENABLE_AUTH_FORUM](#enable-auth-forum)
-- [ENABLE_AUTH_JABBER](#enable-auth-jabber)
-- [ENABLE_AUTH_MUMBLE](#enable-auth-mumble)
-- [ENABLE_AUTH_IPBOARD](#enable-auth-ipboard)
-- [ENABLE_AUTH_TEAMSPEAK3](#enable-auth-teamspeak3)
-- [ENABLE_AUTH_DISCORD](#enable-auth-discord)
-- [ENABLE_AUTH_DISCOURSE](#enable-auth-discourse)
-- [ENABLE_AUTH_IPS4](#enable-auth-ips4)
-- [ENABLE_AUTH_SMF](#enable-auth-smf)
-- [ENABLE_AUTH_MARKET](#enable-auth-market)
-- [ENABLE_AUTH_XENFORO](#enable-auth-xenforo)
-
-### Blue Services
-After installing services, enable specific services for blues by setting the following to `True`
-- [ENABLE_BLUE_FORUM](#enable-blue-forum)
-- [ENABLE_BLUE_JABBER](#enable-blue-jabber)
-- [ENABLE_BLUE_MUMBLE](#enable-blue-mumble)
-- [ENABLE_BLUE_IPBOARD](#enable-blue-ipboard)
-- [ENABLE_BLUE_TEAMSPEAK3](#enable-blue-teamspeak3)
-- [ENABLE_BLUE_DISCORD](#enable-blue-discord)
-- [ENABLE_BLUE_DISCOURSE](#enable-blue-discourse)
-- [ENABLE_BLUE_IPS4](#enable-blue-ips4)
-- [ENABLE_BLUE_SMF](#enable-blue-smf)
-- [ENABLE_BLUE_MARKET](#enable-blue-market)
-- [ENABLE_BLUE_XENFORO](#enable-blue-xenforo)
-
 ### IPBoard
 If using IPBoard, the following need to be set in accordance with the [install instructions](../services/ipboard3.md)
  - [IPBOARD_ENDPOINT](#ipboard-endpoint)
@@ -96,6 +68,7 @@ If using Openfire, the following need to be set in accordance with the [install 
  - [BROADCAST_USER](#broadcast-user)
  - [BROADCAST_USER_PASSWORD](#broadcast-user-password)
  - [BROADCAST_SERVICE_NAME](#broadcast-service-name)
+ - [BROADCAST_IGNORE_INVALID_CERT](#broadcast-ignore-invalid-cert)
 
 ### Mumble
 If using Mumble, the following needs to be set to the address of the mumble server:
@@ -164,6 +137,13 @@ Fittings and operations can be imported from Fleet-Up. Define the following to d
  - [FLEETUP_API_ID](#fleetup-api-id)
  - [FLEETUP_GROUP_ID](#fleetup-group-id)
 
+### CAPTCHA
+To help prevent bots from registering and brute forcing the login. Get the reCaptcha keys from [here](https://www.google.com/recaptcha/intro/index.html)
+ - [CAPTCHA_ENABLED](#captcha_enabled)
+ - [RECAPTCHA_PUBLIC_KEY](#recaptcha_public_key)
+ - [RECAPTCHA_PRIVATE_KEY](#recaptcha_private_key)
+ - [NOCAPTCHA](#nocaptcha)
+
 # Description of Settings
 ## Django
 ### SECRET_KEY
@@ -178,6 +158,14 @@ List of databases available. Contains the Django database, and may include servi
 Friendly name of the local language.
 ### TIME_ZONE
 Friendly name of the local timezone.
+### CAPTCHA_ENABLED
+Enable Google reCaptcha
+### RECAPTCHA_PUBLIC_KEY
+Google reCaptcha public key
+### RECAPTCHA_PRIVATE_KEY
+Google reCaptcha private key
+### NOCAPTCHA
+Enable New No Captcha reCaptcha
 ### STATIC_URL
 Absolute URL to serve static files from.
 ### STATIC_ROOT
@@ -227,52 +215,6 @@ If `True`, add members to groups with their alliance name, prefixed with `Allian
 If `True`, add blues to groups with their corp name, prefixed with `Corp_`
 ### BLUE_ALLIANCE_GROUPS
 If `True`, add blues to groups with their alliance name, prefixed with `Alliance_`
-## Alliance Service Setup
-### ENABLE_AUTH_FORUM
-Allow members of the owning corp or alliance to generate accounts on a Phpbb3 install.
-### ENABLE_AUTH_JABBER
-Allow members of the owning corp or alliance to generate accounts on an Openfire install.
-### ENABLE_AUTH_MUMBLE
-Allow members of the owning corp or alliance to generate accounts on a Mumble install.
-### ENABLE_AUTH_IPBOARD
-Allow members of the owning corp or alliance to generate accounts on an IPBoard install.
-### ENABLE_AUTH_TEAMSPEAK3
-Allow members of the owning corp or alliance to generate accounts on a Teamspeak3 install.
-### ENABLE_AUTH_DISCORD
-Allow members of the owning corp or alliance to link accounts to a Discord server.
-### ENABLE_AUTH_DISCOURSE
-Allow members of the owning corp or alliance to generate accounts on a Discourse install
-### ENABLE_AUTH_IPS4
-Allow members of the owning corp or alliance to generate accounts on a IPSuite4 install.
-### ENABLE_AUTH_SMF
-Allow members of the owning corp or alliance to generate accounts on a SMF install.
-### ENABLE_AUTH_MARKET
-Allow members of the owning corp or alliance to generate accounts on an alliance market install.
-### ENABLE_AUTH_XENFORO
-Allow members of the owning corp or alliance to generate accounts on a XenForo install.
-## Blue Service Setup
-### ENABLE_BLUE_FORUM
-Allow blues of the owning corp or alliance to generate accounts on a Phpbb3 install.
-### ENABLE_BLUE_JABBER
-Allow blues of the owning corp or alliance to generate accounts on an Openfire install.
-### ENABLE_BLUE_MUMBLE
-Allow blues of the owning corp or alliance to generate accounts on a Mumble install.
-### ENABLE_BLUE_IPBOARD
-Allow blues of the owning corp or alliance to generate accounts on an IPBoard install.
-### ENABLE_BLUE_TEAMSPEAK3
-Allow blues of the owning corp or alliance to generate accounts on a Teamspeak3 install.
-### ENABLE_BLUE_DISCORD
-Allow blues of the owning corp or alliance to link accounts to a Discord server.
-### ENABLE_BLUE_DISCOURSE
-Allow blues of the owning corp or alliance to generate accounts on a Discourse install.
-### ENABLE_BLUE_IPS4
-Allow blues of the owning corp or alliance to generate accounts on an IPSuite4 install.
-### ENABLE_BLUE_SMF
-Allow blues of the owning corp or alliance to generate accounts on a SMF install.
-### ENABLE_BLUE_MARKET
-Allow blues of the owning corp or alliance to generate accounts on an alliance market install.
-### ENABLE_BLUE_XENFORO
-Allow blues of the owning corp or alliance to generate accounts on a XenForo install.
 ## Tenant Configuration
 Characters of any corp or alliance with their ID here will be treated as a member.
 ### CORP_IDS

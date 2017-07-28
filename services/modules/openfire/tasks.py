@@ -39,15 +39,11 @@ class OpenfireTasks:
 
     @staticmethod
     def disable_jabber():
-        if settings.ENABLE_AUTH_JABBER:
-            logger.warn("ENABLE_AUTH_JABBER still True, after disabling users will still be able to create jabber accounts")
-        if settings.ENABLE_BLUE_JABBER:
-            logger.warn("ENABLE_BLUE_JABBER still True, after disabling blues will still be able to create jabber accounts")
         logging.debug("Deleting all Openfire users")
         OpenfireUser.objects.all().delete()
 
     @staticmethod
-    @app.task(bind=True)
+    @app.task(bind=True, name="openfire.update_groups")
     def update_groups(self, pk):
         user = User.objects.get(pk=pk)
         logger.debug("Updating jabber groups for user %s" % user)
@@ -68,7 +64,7 @@ class OpenfireTasks:
             logger.debug("User does not have an openfire account")
 
     @staticmethod
-    @app.task
+    @app.task(name="openfire.update_all_groups")
     def update_all_groups():
         logger.debug("Updating ALL jabber groups")
         for openfire_user in OpenfireUser.objects.exclude(username__exact=''):

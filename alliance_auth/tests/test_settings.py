@@ -4,13 +4,9 @@ Alliance Auth Test Suite Django settings.
 
 import os
 
-import djcelery
-
 from django.contrib import messages
 
 import alliance_auth
-
-djcelery.setup_loader()
 
 # Use nose to run all tests
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
@@ -18,6 +14,7 @@ TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 NOSE_ARGS = [
     #'--with-coverage',
     #'--cover-package=',
+    #'--exe',  # If your tests need this to be found/run, check they py files are not chmodded +x
 ]
 
 # Celery configuration
@@ -40,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    'djcelery',
+    'django_celery_beat',
     'bootstrapform',
     'authentication',
     'services',
@@ -52,8 +49,10 @@ INSTALLED_APPS = [
     'optimer',
     'corputils',
     'fleetactivitytracking',
+    'fleetup',
     'notifications',
     'esi',
+    'permissions_tool',
     'geelweb.django.navhelper',
     'bootstrap_pagination',
     'services.modules.mumble',
@@ -63,6 +62,7 @@ INSTALLED_APPS = [
     'services.modules.ips4',
     'services.modules.market',
     'services.modules.openfire',
+    'services.modules.seat',
     'services.modules.smf',
     'services.modules.phpbb3',
     'services.modules.xenforo',
@@ -141,7 +141,7 @@ SUPERUSER_STATE_BYPASS = 'True' == os.environ.get('AA_SUPERUSER_STATE_BYPASS', '
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
 
-LANGUAGE_CODE = os.environ.get('AA_LANGUAGE_CODE', 'en-us')
+LANGUAGE_CODE = os.environ.get('AA_LANGUAGE_CODE', 'en')
 
 TIME_ZONE = os.environ.get('AA_TIME_ZONE', 'UTC')
 
@@ -244,62 +244,6 @@ MEMBER_CORP_GROUPS = 'True' == os.environ.get('AA_MEMBER_CORP_GROUPS', 'True')
 MEMBER_ALLIANCE_GROUPS = 'True' == os.environ.get('AA_MEMBER_ALLIANCE_GROUPS', 'False')
 BLUE_CORP_GROUPS = 'True' == os.environ.get('AA_BLUE_CORP_GROUPS', 'False')
 BLUE_ALLIANCE_GROUPS = 'True' == os.environ.get('AA_BLUE_ALLIANCE_GROUPS', 'False')
-
-#########################
-# Alliance Service Setup
-#########################
-# ENABLE_AUTH_FORUM - Enable forum support in the auth for auth'd members
-# ENABLE_AUTH_JABBER - Enable jabber support in the auth for auth'd members
-# ENABLE_AUTH_MUMBLE - Enable mumble support in the auth for auth'd members
-# ENABLE_AUTH_IPBOARD - Enable IPBoard forum support in the auth for auth'd members
-# ENABLE_AUTH_DISCORD - Enable Discord support in the auth for auth'd members
-# ENABLE_AUTH_DISCOURSE - Enable Discourse support in the auth for auth'd members
-# ENABLE_AUTH_IPS4 - Enable IPS4 support in the auth for auth'd members
-# ENABLE_AUTH_SMF - Enable SMF forum support in the auth for auth'd members
-# ENABLE_AUTH_MARKET = Enable Alliance Market support in auth for auth'd members
-# ENABLE_AUTH_PATHFINDER = Enable Alliance Pathfinder suppor in auth for auth'd members
-# ENABLE_AUTH_XENFORO = Enable XenForo forums support in the auth for auth'd members
-#########################
-ENABLE_AUTH_FORUM = 'True' == os.environ.get('AA_ENABLE_AUTH_FORUM', 'True')
-ENABLE_AUTH_JABBER = 'True' == os.environ.get('AA_ENABLE_AUTH_JABBER', 'True')
-ENABLE_AUTH_MUMBLE = 'True' == os.environ.get('AA_ENABLE_AUTH_MUMBLE', 'True')
-ENABLE_AUTH_IPBOARD = 'True' == os.environ.get('AA_ENABLE_AUTH_IPBOARD', 'True')
-ENABLE_AUTH_TEAMSPEAK3 = 'True' == os.environ.get('AA_ENABLE_AUTH_TEAMSPEAK3', 'True')
-ENABLE_AUTH_DISCORD = 'True' == os.environ.get('AA_ENABLE_AUTH_DISCORD', 'True')
-ENABLE_AUTH_DISCOURSE = 'True' == os.environ.get('AA_ENABLE_AUTH_DISCOURSE', 'True')
-ENABLE_AUTH_IPS4 = 'True' == os.environ.get('AA_ENABLE_AUTH_IPS4', 'True')
-ENABLE_AUTH_SMF = 'True' == os.environ.get('AA_ENABLE_AUTH_SMF', 'True')
-ENABLE_AUTH_MARKET = 'True' == os.environ.get('AA_ENABLE_AUTH_MARKET', 'True')
-ENABLE_AUTH_XENFORO = 'True' == os.environ.get('AA_ENABLE_AUTH_XENFORO', 'True')
-
-#####################
-# Blue service Setup
-#####################
-# BLUE_STANDING - The default lowest standings setting to consider blue
-# ENABLE_BLUE_FORUM - Enable forum support in the auth for blues
-# ENABLE_BLUE_JABBER - Enable jabber support in the auth for blues
-# ENABLE_BLUE_MUMBLE - Enable mumble support in the auth for blues
-# ENABLE_BLUE_IPBOARD - Enable IPBoard forum support in the auth for blues
-# ENABLE_BLUE_DISCORD - Enable Discord support in the auth for blues
-# ENABLE_BLUE_DISCOURSE - Enable Discord support in the auth for blues
-# ENABLE_BLUE_IPS4 - Enable IPS4 forum support in the auth for blues
-# ENABLE_BLUE_SMF - Enable SMF forum support in the auth for blues
-# ENABLE_BLUE_MARKET - Enable Alliance Market in the auth for blues
-# ENABLE_BLUE_PATHFINDER = Enable Pathfinder support in the auth for blues
-# ENABLE_BLUE_XENFORO = Enable XenForo forum support in the auth for blue 
-#####################
-BLUE_STANDING = float(os.environ.get('AA_BLUE_STANDING', '5.0'))
-ENABLE_BLUE_FORUM = 'True' == os.environ.get('AA_ENABLE_BLUE_FORUM', 'True')
-ENABLE_BLUE_JABBER = 'True' == os.environ.get('AA_ENABLE_BLUE_JABBER', 'True')
-ENABLE_BLUE_MUMBLE = 'True' == os.environ.get('AA_ENABLE_BLUE_MUMBLE', 'True')
-ENABLE_BLUE_IPBOARD = 'True' == os.environ.get('AA_ENABLE_BLUE_IPBOARD', 'True')
-ENABLE_BLUE_TEAMSPEAK3 = 'True' == os.environ.get('AA_ENABLE_BLUE_TEAMSPEAK3', 'True')
-ENABLE_BLUE_DISCORD = 'True' == os.environ.get('AA_ENABLE_BLUE_DISCORD', 'True')
-ENABLE_BLUE_DISCOURSE = 'True' == os.environ.get('AA_ENABLE_BLUE_DISCOURSE', 'True')
-ENABLE_BLUE_IPS4 = 'True' == os.environ.get('AA_ENABLE_BLUE_IPS4', 'True')
-ENABLE_BLUE_SMF = 'True' == os.environ.get('AA_ENABLE_BLUE_SMF', 'True')
-ENABLE_BLUE_MARKET = 'True' == os.environ.get('AA_ENABLE_BLUE_MARKET', 'True')
-ENABLE_BLUE_XENFORO = 'True' == os.environ.get('AA_ENABLE_BLUE_XENFORO', 'True')
 
 #########################
 # Corp Configuration
@@ -454,12 +398,12 @@ TEAMSPEAK3_PUBLIC_URL = os.environ.get('AA_TEAMSPEAK3_PUBLIC_URL', 'example.com'
 # DISCORD_CALLBACK_URL - oauth callback url
 # DISCORD_SYNC_NAMES - enable to force discord nicknames to be set to eve char name (bot needs Manage Nicknames permission)
 ######################################
-DISCORD_GUILD_ID = os.environ.get('AA_DISCORD_GUILD_ID', '')
-DISCORD_BOT_TOKEN = os.environ.get('AA_DISCORD_BOT_TOKEN', '')
-DISCORD_INVITE_CODE = os.environ.get('AA_DISCORD_INVITE_CODE', '')
-DISCORD_APP_ID = os.environ.get('AA_DISCORD_APP_ID', '')
-DISCORD_APP_SECRET = os.environ.get('AA_DISCORD_APP_SECRET', '')
-DISCORD_CALLBACK_URL = os.environ.get('AA_DISCORD_CALLBACK_URL', 'http://example.com/discord_callback')
+DISCORD_GUILD_ID = os.environ.get('AA_DISCORD_GUILD_ID', '0118999')
+DISCORD_BOT_TOKEN = os.environ.get('AA_DISCORD_BOT_TOKEN', 'bottoken')
+DISCORD_INVITE_CODE = os.environ.get('AA_DISCORD_INVITE_CODE', 'invitecode')
+DISCORD_APP_ID = os.environ.get('AA_DISCORD_APP_ID', 'appid')
+DISCORD_APP_SECRET = os.environ.get('AA_DISCORD_APP_SECRET', 'secret')
+DISCORD_CALLBACK_URL = os.environ.get('AA_DISCORD_CALLBACK_URL', 'http://example.com/discord/callback')
 DISCORD_SYNC_NAMES = 'True' == os.environ.get('AA_DISCORD_SYNC_NAMES', 'False')
 
 ######################################
@@ -485,6 +429,14 @@ DISCOURSE_SSO_SECRET = 'd836444a9e4084d5b224a60c208dce14'
 IPS4_URL = os.environ.get('AA_IPS4_URL', 'http://example.com/ips4')
 IPS4_API_KEY = os.environ.get('AA_IPS4_API_KEY', '')
 
+#####################################
+# SEAT Configuration
+#####################################
+# SEAT_URL - base url of the seat install (no trailing slash)
+# SEAT_XTOKEN - API key X-Token provided by SeAT
+#####################################
+SEAT_URL = os.environ.get('AA_SEAT_URL', 'http://example.com/seat')
+SEAT_XTOKEN = os.environ.get('AA_SEAT_XTOKEN', 'tokentokentoken')
 
 ######################################
 # SMF Configuration
