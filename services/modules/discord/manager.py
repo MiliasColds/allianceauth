@@ -5,7 +5,6 @@ import re
 import math
 from django.conf import settings
 from django.core.cache import cache
-from services.models import GroupCache
 from requests_oauthlib import OAuth2Session
 from functools import wraps
 import logging
