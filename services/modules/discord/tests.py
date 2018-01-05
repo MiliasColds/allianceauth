@@ -351,7 +351,7 @@ class DiscordManagerTestCase(TestCase):
         # Assert
         self.assertTrue(result)
 
-    @mock.patch(MODULE_PATH + '.manager.DiscordOAuthManager._DiscordOAuthManager__get_group_cache')
+    @mock.patch(MODULE_PATH + '.manager.DiscordOAuthManager._get_groups')
     @requests_mock.Mocker()
     def test_update_groups(self, group_cache, m):
         from . import manager
@@ -385,7 +385,7 @@ class DiscordManagerTestCase(TestCase):
         self.assertNotIn(444, history['roles'], 'The group id 444 must NOT be added to the request')
 
     @mock.patch(MODULE_PATH + '.manager.cache')
-    @mock.patch(MODULE_PATH + '.manager.DiscordOAuthManager._DiscordOAuthManager__get_group_cache')
+    @mock.patch(MODULE_PATH + '.manager.DiscordOAuthManager._get_groups')
     @requests_mock.Mocker()
     def test_update_groups_backoff(self, group_cache, djcache, m):
         from . import manager
@@ -402,7 +402,7 @@ class DiscordManagerTestCase(TestCase):
 
         m.patch(request_url,
                 request_headers=headers,
-                headers={'Retry-After': '200'},
+                headers={'Retry-After': '200000'},
                 status_code=429)
 
         # Act & Assert
@@ -410,7 +410,7 @@ class DiscordManagerTestCase(TestCase):
             try:
                 DiscordOAuthManager.update_groups(user_id, groups, blocking=False)
             except manager.DiscordApiBackoff as bo:
-                self.assertEqual(bo.retry_after, 200, 'Retry-After time must be equal to Retry-After set in header')
+                self.assertEqual(bo.retry_after, 200000, 'Retry-After time must be equal to Retry-After set in header')
                 self.assertFalse(bo.global_ratelimit, 'global_ratelimit must be False')
                 raise bo
 
@@ -420,7 +420,7 @@ class DiscordManagerTestCase(TestCase):
         self.assertTrue(datetime.datetime.strptime(args[1], manager.cache_time_format) > datetime.datetime.now())
 
     @mock.patch(MODULE_PATH + '.manager.cache')
-    @mock.patch(MODULE_PATH + '.manager.DiscordOAuthManager._DiscordOAuthManager__get_group_cache')
+    @mock.patch(MODULE_PATH + '.manager.DiscordOAuthManager._get_groups')
     @requests_mock.Mocker()
     def test_update_groups_global_backoff(self, group_cache, djcache, m):
         from . import manager
@@ -437,7 +437,7 @@ class DiscordManagerTestCase(TestCase):
 
         m.patch(request_url,
                 request_headers=headers,
-                headers={'Retry-After': '200', 'X-RateLimit-Global': 'true'},
+                headers={'Retry-After': '200000', 'X-RateLimit-Global': 'true'},
                 status_code=429)
 
         # Act & Assert
@@ -445,7 +445,7 @@ class DiscordManagerTestCase(TestCase):
             try:
                 DiscordOAuthManager.update_groups(user_id, groups, blocking=False)
             except manager.DiscordApiBackoff as bo:
-                self.assertEqual(bo.retry_after, 200, 'Retry-After time must be equal to Retry-After set in header')
+                self.assertEqual(bo.retry_after, 200000, 'Retry-After time must be equal to Retry-After set in header')
                 self.assertTrue(bo.global_ratelimit, 'global_ratelimit must be True')
                 raise bo
 

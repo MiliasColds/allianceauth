@@ -5,7 +5,7 @@ dnspython
 passlib
 requests>=2.9.1
 bcrypt
-slugify
+python-slugify>=1.2
 requests-oauthlib
 sleekxmpp
 redis
@@ -16,11 +16,11 @@ django>=1.10,<2.0
 django-bootstrap-form
 django-navhelper
 django-bootstrap-pagination
-django-redis>=4.4
+django-redis-cache>=1.7.1
 django-recaptcha
 django-celery-beat
 
 # awating pyghassen/openfire-restapi #1 to fix installation issues
 git+https://github.com/adarnof/openfire-restapi
 
-git+https://github.com/adarnof/adarnauth-esi
+adarnauth-esi>=1.4.1,<2.0

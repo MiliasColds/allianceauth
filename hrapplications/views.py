@@ -39,13 +39,14 @@ def hr_application_management_view(request):
         except EveCharacter.DoesNotExist:
             pass
     if request.user.is_superuser:
-        corp_applications = Application.objects.filter(approved=None)
-        finished_corp_applications = Application.objects.exclude(approved=None)
+        corp_applications = Application.objects.filter(approved=None).order_by('-created')
+        finished_corp_applications = Application.objects.exclude(approved=None).order_by('-created')
     elif request.user.has_perm('auth.human_resources') and main_char:
         if ApplicationForm.objects.filter(corp__corporation_id=main_char.corporation_id).exists():
             app_form = ApplicationForm.objects.get(corp__corporation_id=main_char.corporation_id)
-            corp_applications = Application.objects.filter(form=app_form).filter(approved=None)
-            finished_corp_applications = Application.objects.filter(form=app_form).filter(approved__in=[True, False])
+            corp_applications = Application.objects.filter(form=app_form).filter(approved=None).sorted_by('-created')
+            finished_corp_applications = Application.objects.filter(form=app_form).filter(
+                approved__in=[True, False]).order_by('-created')
     logger.debug("Retrieved %s personal, %s corp applications for %s" % (
         len(request.user.applications.all()), len(corp_applications), request.user))
     context = {
@@ -71,8 +72,8 @@ def hr_application_create_view(request, form_id=None):
                 application.save()
                 for question in app_form.questions.all():
                     response = ApplicationResponse(question=question, application=application)
-                    response.answer = request.POST.get(str(question.pk),
-                                                       "Failed to retrieve answer provided by applicant.")
+                    response.answer = "\n".join(request.POST.getlist(str(question.pk),
+                                                       ""))
                     response.save()
                 logger.info("%s created %s" % (request.user, application))
             return redirect('auth_hrapplications_view')

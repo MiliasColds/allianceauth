@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import requests
 import json
 import re
+import math
 from django.conf import settings
 from django.core.cache import cache
 from services.models import GroupCache
@@ -10,8 +11,8 @@ from functools import wraps
 import logging
 import datetime
 import time
-from django.utils import timezone
 from django.core.cache import cache
+from hashlib import md5
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,16 @@ EVE_IMAGE_SERVER = "https://image.eveonline.com"
 AUTH_URL = "https://discordapp.com/api/oauth2/authorize"
 TOKEN_URL = "https://discordapp.com/api/oauth2/token"
 
-# needs administrator, since Discord can't get their permissions system to work
-# was kick members, manage roles, manage nicknames
-BOT_PERMISSIONS = 0x00000002 | 0x10000000 | 0x08000000 | 0x00000008
-#BOT_PERMISSIONS = 0x00000008
+
+"""
+Previously all we asked for was permission to kick members, manage roles, and manage nicknames.
+Users have reported weird unauthorized errors we don't understand. So now we ask for full server admin.
+It's almost fixed the problem.
+"""
+# kick members, manage roles, manage nicknames
+# BOT_PERMISSIONS = 0x00000002 + 0x10000000 + 0x08000000
+BOT_PERMISSIONS = 0x00000008
+
 
 # get user ID, accept invite
 SCOPES = [
@@ -32,10 +39,14 @@ SCOPES = [
     'guilds.join',
 ]
 
-GROUP_CACHE_MAX_AGE = datetime.timedelta(minutes=30)
+
+#GROUP_CACHE_MAX_AGE = datetime.timedelta(minutes=30)
 cache.add('reset_value',10)
 cache.add('reset_on',datetime.datetime.now())
 cache.add('remaining_api',10)
+GROUP_CACHE_MAX_AGE = int(getattr(settings, 'DISCORD_GROUP_CACHE_MAX_AGE', 2 * 60 * 60))  # 2 hours default
+
+
 
 class DiscordApiException(Exception):
     def __init__(self):
@@ -50,12 +61,20 @@ class DiscordApiTooBusy(DiscordApiException):
 
 class DiscordApiBackoff(DiscordApiException):
     def __init__(self, retry_after, global_ratelimit):
+        """
+        :param retry_after: int time to retry after in milliseconds
+        :param global_ratelimit: bool Is the API under a global backoff
+        """
         super(DiscordApiException, self).__init__()
         self.retry_after = retry_after
         self.global_ratelimit = global_ratelimit
 
+    @property
+    def retry_after_seconds(self):
+        return math.ceil(self.retry_after / 1000)
 
-cache_time_format = '%Y-%m-%d %H:%M:%S'
+
+cache_time_format = '%Y-%m-%d %H:%M:%S.%f'
 
 
 def api_backoff(func):
@@ -117,12 +136,12 @@ def api_backoff(func):
                             retry_after = int(e.response.headers['Retry-After'])
                         except (TypeError, KeyError):
                             # Pick some random time
-                            retry_after = 5
+                            retry_after = 5000
 
                         logger.info("Received backoff from API of %s seconds, handling" % retry_after)
                         # Store value in redis
                         backoff_until = (datetime.datetime.utcnow() +
-                                         datetime.timedelta(seconds=retry_after))
+                                         datetime.timedelta(milliseconds=retry_after))
                         global_backoff = bool(e.response.headers.get('X-RateLimit-Global', False))
                         if global_backoff:
                             logger.info("Global backoff!!")
@@ -138,7 +157,7 @@ def api_backoff(func):
                 # Sleep if we're blocking
                 if blocking:
                     logger.info("Blocking Back off from API calls for %s seconds" % bo.retry_after)
-                    time.sleep(10 if bo.retry_after > 10 else bo.retry_after)
+                    time.sleep((10 if bo.retry_after > 10 else bo.retry_after) / 1000)
                 else:
                     # Otherwise raise exception and let caller handle the backoff
                     raise DiscordApiBackoff(retry_after=bo.retry_after, global_ratelimit=bo.global_ratelimit)
@@ -173,10 +192,14 @@ class DiscordOAuthManager:
         if('X-RateLimit-Remaining' in response.headers):
             cache.set('remaining_api',int(response.headers['X-RateLimit-Remaining']),None)
 
+    def _sanitize_name(name):
+        return re.sub('[^\w.-]', '', name)[:32]
+
+
     @staticmethod
     def _sanitize_groupname(name):
         name = name.strip(' _')
-        return re.sub('[^\w.-]', '', name)
+        return DiscordOAuthManager._sanitize_name(name)
 
     @staticmethod
     def generate_bot_add_url():
@@ -225,8 +248,9 @@ class DiscordOAuthManager:
     @staticmethod
     def update_nickname(user_id, nickname):
         try:
+            nickname = DiscordOAuthManager._sanitize_name(nickname)
             custom_headers = {'content-type': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
-            data = {'nick': nickname, }
+            data = {'nick': nickname}
             path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
             DiscordOAuthManager.Limit_API()
             r = requests.patch(path, headers=custom_headers, json=data)
@@ -261,7 +285,7 @@ class DiscordOAuthManager:
             return False
 
     @staticmethod
-    def __get_groups():
+    def _get_groups():
         custom_headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/roles"
         DiscordOAuthManager.Limit_API()
@@ -272,41 +296,20 @@ class DiscordOAuthManager:
         return r.json()
 
     @staticmethod
-    def __update_group_cache():
-        GroupCache.objects.filter(service="discord").delete()
-        cache = GroupCache.objects.create(service="discord")
-        cache.groups = json.dumps(DiscordOAuthManager.__get_groups())
-        cache.save()
-        return cache
+    def _generate_cache_role_key(name):
+        return 'DISCORD_ROLE_NAME__%s' % md5(str(name).encode('utf-8')).hexdigest()
 
     @staticmethod
-    def __get_group_cache():
-        if not GroupCache.objects.filter(service="discord").exists():
-            DiscordOAuthManager.__update_group_cache()
-        cache = GroupCache.objects.get(service="discord")
-        age = timezone.now() - cache.created
-        if age > GROUP_CACHE_MAX_AGE:
-            logger.debug("Group cache has expired. Triggering update.")
-            cache = DiscordOAuthManager.__update_group_cache()
-        return json.loads(cache.groups)
+    def _group_name_to_id(name):
+        name = DiscordOAuthManager._sanitize_groupname(name)
 
-    @staticmethod
-    def __group_name_to_id(name):
-        cache = DiscordOAuthManager.__get_group_cache()
-        for g in cache:
-            if g['name'] == name:
-                return g['id']
-        logger.debug("Group %s not found on Discord. Creating" % name)
-        DiscordOAuthManager.__create_group(name)
-        return DiscordOAuthManager.__group_name_to_id(name)
-
-    @staticmethod
-    def __group_id_to_name(id):
-        cache = DiscordOAuthManager.__get_group_cache()
-        for g in cache:
-            if g['id'] == id:
-                return g['name']
-        raise KeyError("Group ID %s not found on Discord" % id)
+        def get_or_make_role():
+            groups = DiscordOAuthManager._get_groups()
+            for g in groups:
+                if g['name'] == name:
+                    return g['id']
+            return DiscordOAuthManager._create_group(name)['id']
+        return cache.get_or_set(DiscordOAuthManager._generate_cache_role_key(name), get_or_make_role, GROUP_CACHE_MAX_AGE)
 
     @staticmethod
     def __generate_role():
@@ -337,16 +340,15 @@ class DiscordOAuthManager:
         return r.json()
 
     @staticmethod
-    def __create_group(name):
+    def _create_group(name):
         role = DiscordOAuthManager.__generate_role()
-        DiscordOAuthManager.__edit_role(role['id'], name)
-        DiscordOAuthManager.__update_group_cache()
+        return DiscordOAuthManager.__edit_role(role['id'], name)
 
     @staticmethod
     @api_backoff
     def update_groups(user_id, groups):
         custom_headers = {'content-type': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
-        group_ids = [DiscordOAuthManager.__group_name_to_id(DiscordOAuthManager._sanitize_groupname(g)) for g in groups]
+        group_ids = [DiscordOAuthManager._group_name_to_id(DiscordOAuthManager._sanitize_groupname(g)) for g in groups]
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
         data = {'roles': group_ids}
         DiscordOAuthManager.Limit_API()
