@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
-import requests
-import json
 import re
+import requests
 import math
 from django.conf import settings
 from django.core.cache import cache
@@ -27,8 +26,8 @@ Previously all we asked for was permission to kick members, manage roles, and ma
 Users have reported weird unauthorized errors we don't understand. So now we ask for full server admin.
 It's almost fixed the problem.
 """
-# kick members, manage roles, manage nicknames
-# BOT_PERMISSIONS = 0x00000002 + 0x10000000 + 0x08000000
+# kick members, manage roles, manage nicknames, create instant invite
+# BOT_PERMISSIONS = 0x00000002 + 0x10000000 + 0x08000000 + 0x00000001
 BOT_PERMISSIONS = 0x00000008
 
 
@@ -127,8 +126,7 @@ def api_backoff(func):
                                 global_ratelimit=bool(existing_global_backoff)
                             )
                     logger.debug("Calling API calling function")
-                    func(*args, **kwargs)
-                    break
+                    return func(*args, **kwargs)
                 except requests.HTTPError as e:
                     if e.response.status_code == 429:
                         try:
@@ -192,13 +190,12 @@ class DiscordOAuthManager:
             cache.set('remaining_api',int(response.headers['X-RateLimit-Remaining']),None)
 
     def _sanitize_name(name):
-        return re.sub('[^\w.-]', '', name)[:32]
+        return name[:32]
 
 
     @staticmethod
-    def _sanitize_groupname(name):
-        name = name.strip(' _')
-        return DiscordOAuthManager._sanitize_name(name)
+    def _sanitize_group_name(name):
+        return name[:100]
 
     @staticmethod
     def generate_bot_add_url():
@@ -217,27 +214,35 @@ class DiscordOAuthManager:
         return token
 
     @staticmethod
-    def add_user(code):
+    def add_user(code, groups, nickname=None):
         try:
             token = DiscordOAuthManager._process_callback_code(code)['access_token']
             logger.debug("Received token from OAuth")
 
             custom_headers = {'accept': 'application/json', 'authorization': 'Bearer ' + token}
-            path = DISCORD_URL + "/invites/" + str(settings.DISCORD_INVITE_CODE)
-            DiscordOAuthManager.Limit_API()
+            path = DISCORD_URL + "/users/@me"
+            #DiscordOAuthManager.Limit_API()
             r = requests.post(path, headers=custom_headers)
             logger.debug("Got status code %s after accepting Discord invite" % r.status_code)
-            DiscordOAuthManager.Check_Limit(r)
-            r.raise_for_status()
-
-            path = DISCORD_URL + "/users/@me"
-            DiscordOAuthManager.Limit_API()
-            r = requests.get(path, headers=custom_headers)
-            logger.debug("Got status code %s after retrieving Discord profile" % r.status_code)
-            DiscordOAuthManager.Check_Limit(r)
+            #DiscordOAuthManager.Check_Limit(r)
             r.raise_for_status()
 
             user_id = r.json()['id']
+
+            path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
+            group_ids = [DiscordOAuthManager._group_name_to_id(DiscordOAuthManager._sanitize_group_name(g)) for g in
+                         groups]
+            data = {
+                'roles': group_ids,
+                'access_token': token,
+            }
+            if nickname:
+                data['nick'] = nickname
+            custom_headers['authorization'] = 'Bot ' + settings.DISCORD_BOT_TOKEN
+            r = requests.put(path, headers=custom_headers, json=data)
+            logger.debug("Got status code %s after joining Discord server" % r.status_code)
+            r.raise_for_status()
+
             logger.info("Added Discord user ID %s to server." % user_id)
             return user_id
         except:
@@ -245,17 +250,18 @@ class DiscordOAuthManager:
             return None
 
     @staticmethod
+    @api_backoff
     def update_nickname(user_id, nickname):
         try:
             nickname = DiscordOAuthManager._sanitize_name(nickname)
             custom_headers = {'content-type': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
             data = {'nick': nickname}
             path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
-            DiscordOAuthManager.Limit_API()
+            #DiscordOAuthManager.Limit_API()
             r = requests.patch(path, headers=custom_headers, json=data)
             logger.debug("Got status code %s after setting nickname for Discord user ID %s (%s)" % (
                 r.status_code, user_id, nickname))
-            DiscordOAuthManager.Check_Limit(r)
+            #DiscordOAuthManager.Check_Limit(r)
             if r.status_code == 404:
                 logger.warn("Discord user ID %s could not be found in server." % user_id)
                 return True
@@ -270,13 +276,13 @@ class DiscordOAuthManager:
         try:
             custom_headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
             path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
-            DiscordOAuthManager.Limit_API()
+            #DiscordOAuthManager.Limit_API()
             r = requests.delete(path, headers=custom_headers)
             logger.debug("Got status code %s after removing Discord user ID %s" % (r.status_code, user_id))
             if r.status_code == 404:
                 logger.warn("Discord user ID %s already left the server." % user_id)
                 return True
-            DiscordOAuthManager.Check_Limit(r)
+            #DiscordOAuthManager.Check_Limit(r)
             r.raise_for_status()
             return True
         except:
@@ -287,10 +293,10 @@ class DiscordOAuthManager:
     def _get_groups():
         custom_headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/roles"
-        DiscordOAuthManager.Limit_API()
+        #DiscordOAuthManager.Limit_API()
         r = requests.get(path, headers=custom_headers)
         logger.debug("Got status code %s after retrieving Discord roles" % r.status_code)
-        DiscordOAuthManager.Check_Limit(r)
+        #DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
         return r.json()
 
@@ -300,7 +306,7 @@ class DiscordOAuthManager:
 
     @staticmethod
     def _group_name_to_id(name):
-        name = DiscordOAuthManager._sanitize_groupname(name)
+        name = DiscordOAuthManager._sanitize_group_name(name)
 
         def get_or_make_role():
             groups = DiscordOAuthManager._get_groups()
@@ -311,48 +317,42 @@ class DiscordOAuthManager:
         return cache.get_or_set(DiscordOAuthManager._generate_cache_role_key(name), get_or_make_role, GROUP_CACHE_MAX_AGE)
 
     @staticmethod
-    def __generate_role():
+    def __generate_role(name, **kwargs):
         custom_headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/roles"
-        DiscordOAuthManager.Limit_API()
-        r = requests.post(path, headers=custom_headers)
+        #DiscordOAuthManager.Limit_API()
+        data = {'name': name}
+        data.update(kwargs)
+        r = requests.post(path, headers=custom_headers, json=data)
         logger.debug("Received status code %s after generating new role." % r.status_code)
-        DiscordOAuthManager.Check_Limit(r)
+        #DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
         return r.json()
 
     @staticmethod
-    def __edit_role(role_id, name, color=0, hoist=True, permissions=36785152):
+    def __edit_role(role_id, **kwargs):
         custom_headers = {'content-type': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
-        data = {
-            'color': color,
-            'hoist': hoist,
-            'name': name,
-            'permissions': permissions,
-        }
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/roles/" + str(role_id)
-        DiscordOAuthManager.Limit_API()
-        r = requests.patch(path, headers=custom_headers, data=json.dumps(data))
+        #DiscordOAuthManager.Limit_API()
+        r = requests.patch(path, headers=custom_headers, json=kwargs)
         logger.debug("Received status code %s after editing role id %s" % (r.status_code, role_id))
-        DiscordOAuthManager.Check_Limit(r)
+        #DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
         return r.json()
 
     @staticmethod
     def _create_group(name):
-        role = DiscordOAuthManager.__generate_role()
-        return DiscordOAuthManager.__edit_role(role['id'], name)
+        return DiscordOAuthManager.__generate_role(name)
 
     @staticmethod
     @api_backoff
     def update_groups(user_id, groups):
         custom_headers = {'content-type': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
-        group_ids = [DiscordOAuthManager._group_name_to_id(DiscordOAuthManager._sanitize_groupname(g)) for g in groups]
+        group_ids = [DiscordOAuthManager._group_name_to_id(DiscordOAuthManager._sanitize_group_name(g)) for g in groups]
         path = DISCORD_URL + "/guilds/" + str(settings.DISCORD_GUILD_ID) + "/members/" + str(user_id)
         data = {'roles': group_ids}
-        DiscordOAuthManager.Limit_API()
+        #DiscordOAuthManager.Limit_API()
         r = requests.patch(path, headers=custom_headers, json=data)
         logger.debug("Received status code %s after setting user roles" % r.status_code)
-        DiscordOAuthManager.Check_Limit(r)
+        #DiscordOAuthManager.Check_Limit(r)
         r.raise_for_status()
-

@@ -6,7 +6,7 @@ from alliance_auth.celeryapp import app
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-
+from requests.exceptions import HTTPError
 from eveonline.managers import EveManager
 from notifications import notify
 from services.modules.discord.manager import DiscordOAuthManager, DiscordApiBackoff
@@ -21,15 +21,16 @@ class DiscordTasks:
 
     @classmethod
     def add_user(cls, user, code):
-        user_id = DiscordOAuthManager.add_user(code)
+        groups = DiscordTasks.get_groups(user)
+        nickname = None
+        if settings.DISCORD_SYNC_NAMES:
+            nickname = DiscordTasks.get_nickname(user)
+        user_id = DiscordOAuthManager.add_user(code, groups, nickname=nickname)
         if user_id:
             discord_user = DiscordUser()
             discord_user.user = user
             discord_user.uid = user_id
             discord_user.save()
-            if settings.DISCORD_SYNC_NAMES:
-                cls.update_nickname.delay(user.pk)
-            cls.update_groups.delay(user.pk)
             return True
         return False
 
@@ -64,12 +65,7 @@ class DiscordTasks:
         user = User.objects.get(pk=pk)
         logger.debug("Updating discord groups for user %s" % user)
         if DiscordTasks.has_account(user):
-            groups = []
-            for group in user.groups.all():
-                groups.append(str(group.name))
-            if len(groups) == 0:
-                logger.debug("No syncgroups found for user. Adding empty group.")
-                groups.append('empty')
+            groups = DiscordTasks.get_groups(user)
             logger.debug("Updating user %s discord groups to %s" % (user, groups))
             try:
                 DiscordOAuthManager.update_groups(user.discord.uid, groups)
@@ -77,6 +73,15 @@ class DiscordTasks:
                 logger.info("Discord group sync API back off for %s, "
                             "retrying in %s seconds" % (user, bo.retry_after_seconds))
                 raise task_self.retry(countdown=bo.retry_after_seconds)
+            except HTTPError as e:
+                if e.response.status_code == 404:
+                    try:
+                        if e.response.json()['code'] == 10007:
+                            # user has left the server
+                            DiscordTasks.delete_user(user)
+                            return
+                    finally:
+                        raise e
             except Exception as e:
                 if task_self:
                     logger.exception("Discord group sync failed for %s, retrying in 10 mins" % user)
@@ -97,18 +102,22 @@ class DiscordTasks:
 
     @staticmethod
     @app.task(bind=True, name='discord.update_nickname')
-    def update_nickname(self, pk):
+    def update_nickname(task_self, pk):
         user = User.objects.get(pk=pk)
         logger.debug("Updating discord nickname for user %s" % user)
         if DiscordTasks.has_account(user):
-            character = EveManager.get_main_character(user)
-            logger.debug("Updating user %s discord nickname to %s" % (user, character.character_name))
+            name = DiscordTasks.get_nickname(user)
+            logger.debug("Updating user %s discord nickname to %s" % (user, name))
             try:
-                DiscordOAuthManager.update_nickname(user.discord.uid, character.character_name)
+                DiscordOAuthManager.update_nickname(user.discord.uid, name)
+            except DiscordApiBackoff as bo:
+                logger.info("Discord nickname update API back off for %s, "
+                            "retrying in %s seconds" % (user, bo.retry_after_seconds))
+                raise task_self.retry(countdown=bo.retry_after_seconds)
             except Exception as e:
-                if self:
+                if task_self:
                     logger.exception("Discord nickname sync failed for %s, retrying in 10 mins" % user)
-                    raise self.retry(countdown=60 * 10)
+                    raise task_self.retry(countdown=60 * 10)
                 else:
                     # Rethrow
                     raise e
@@ -126,3 +135,11 @@ class DiscordTasks:
     @classmethod
     def disable(cls):
         DiscordUser.objects.all().delete()
+
+    @staticmethod
+    def get_nickname(user):
+        return EveManager.get_main_character(user).character_name
+
+    @staticmethod
+    def get_groups(user):
+        return [g.name for g in user.groups.all()]

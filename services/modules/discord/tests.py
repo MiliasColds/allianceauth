@@ -208,11 +208,11 @@ class DiscordManagerTestCase(TestCase):
     def setUp(self):
         pass
 
-    def test__sanitize_groupname(self):
-        test_group_name = ' Group Name_Test_'
-        group_name = DiscordOAuthManager._sanitize_groupname(test_group_name)
+    def test__sanitize_group_name(self):
+        test_group_name = str(10**103)
+        group_name = DiscordOAuthManager._sanitize_group_name(test_group_name)
 
-        self.assertEqual(group_name, 'GroupName_Test')
+        self.assertEqual(group_name, test_group_name[:100])
 
     def test_generate_Bot_add_url(self):
         from . import manager
@@ -267,18 +267,20 @@ class DiscordManagerTestCase(TestCase):
 
         headers = {'accept': 'application/json', 'authorization': 'Bearer accesstoken'}
 
-        m.register_uri('POST',
-                       manager.DISCORD_URL + '/invites/'+str(settings.DISCORD_INVITE_CODE),
-                       request_headers=headers,
-                       text='{}')
-
         m.register_uri('GET',
                        manager.DISCORD_URL + "/users/@me",
                        request_headers=headers,
                        text=json.dumps({'id': "123456"}))
 
+        headers = {'accept': 'application/json', 'authorization': 'Bot ' + settings.DISCORD_BOT_TOKEN}
+
+        m.register_uri('PUT',
+                       manager.DISCORD_URL + '/guilds/' + str(settings.DISCORD_GUILD_ID) + '/members/123456',
+                       request_headers=headers,
+                       text='{}')
+
         # Act
-        return_value = DiscordOAuthManager.add_user('abcdef')
+        return_value = DiscordOAuthManager.add_user('abcdef', [])
 
         # Assert
         self.assertEqual(return_value, '123456')
@@ -358,7 +360,7 @@ class DiscordManagerTestCase(TestCase):
         import json
 
         # Arrange
-        groups = ['Member', 'Blue', 'Special Group']
+        groups = ['Member', 'Blue', 'SpecialGroup']
 
         group_cache.return_value = [{'id': 111, 'name': 'Member'},
                                     {'id': 222, 'name': 'Blue'},
