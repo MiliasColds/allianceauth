@@ -38,118 +38,118 @@
                     {% endif %}
                 </tr>
                 {% for timer in corp_timers %}
-                    {% ifequal timer.important True %}
+                    {% if timer.important == True %}
                         <tr class="danger">
                             {% else %}
                         <tr class="info">
-                    {% endifequal %}
+                    {% endif %}
                 <td style="width:150px" class="text-center">{{ timer.details }}</td>
                 <td class="text-center">
-                    {% ifequal timer.objective "Hostile" %}
+                    {% if timer.objective == "Hostile" %}
                         <div class="label label-danger">
                             {% trans "Hostile" %}
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.objective "Friendly" %}
+                    {% endif %}
+                    {% if timer.objective == "Friendly" %}
                         <div class="label label-primary">
                             {% trans "Friendly" %}
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.objective "Neutral" %}
+                    {% endif %}
+                    {% if timer.objective == "Neutral" %}
                         <div class="label label-default">
                             {% trans "Neutral" %}
                         </div>
-                    {% endifequal %}
+                    {% endif %}
                 </td>
                 <td class="text-center"><a
                         href="http://evemaps.dotlan.net/system/{{ timer.system }}">{{ timer.system }} {{ timer.planet_moon }} </a>
                 </td>
                 <td class="text-center">
-                    {% ifequal timer.structure "I-HUB" %}
+                    {% if timer.structure == "I-HUB" %}
                         <div class="label label-warning">
                             I-HUB
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "POCO" %}
+                    {% endif %}
+                    {% if timer.structure == "POCO" %}
                         <div class="label label-success">
                             POCO
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "POS[S]" %}
+                    {% endif %}
+                    {% if timer.structure == "POS[S]" %}
                         <div class="label label-info">
                             POS [S]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "POS[M]" %}
+                    {% endif %}
+                    {% if timer.structure == "POS[M]" %}
                         <div class="label label-info">
                             POS [M]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "POS[L]" %}
+                    {% endif %}
+                    {% if timer.structure == "POS[L]" %}
                         <div class="label label-info">
                             POS [L]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Citadel[M]" %}
+                    {% endif %}
+                    {% if timer.structure == "Citadel[M]" %}
                         <div class="label label-danger">
                             Citadel [M]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Citadel[L]" %}
+                    {% endif %}
+                    {% if timer.structure == "Citadel[L]" %}
                         <div class="label label-danger">
                             Citadel [L]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Citadel[XL]" %}
+                    {% endif %}
+                    {% if timer.structure == "Citadel[XL]" %}
                         <div class="label label-danger">
                             Citadel [XL]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Engineering Complex[M]" %}
+                    {% endif %}
+                    {% if timer.structure "Engineering == Complex[M]" %}
                         <div class="label label-warning">
                             Engineering Complex [M]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Engineering Complex[L]" %}
+                    {% endif %}
+                    {% if timer.structure "Engineering == Complex[L]" %}
                         <div class="label label-warning">
                             Engineering Complex [L]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Engineering Complex[XL]" %}
+                    {% endif %}
+                    {% if timer.structure "Engineering == Complex[XL]" %}
                         <div class="label label-warning">
                             Engineering Complex [XL]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Station" %}
+                    {% endif %}
+                    {% if timer.structure == "Station" %}
                         <div class="label label-danger">
                             Station
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "TCU" %}
+                    {% endif %}
+                    {% if timer.structure == "TCU" %}
                         <div class="label label-danger">
                             TCU
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Refinery[M]" %}
+                    {% endif %}
+                    {% if timer.structure == "Refinery[M]" %}
                         <div class="label label-warning">
                             Refinery [M]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Refinery[L]" %}
+                    {% endif %}
+                    {% if timer.structure == "Refinery[L]" %}
                         <div class="label label-warning">
                             Refinery [L]
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Moon Mining Cycle" %}
+                    {% endif %}
+                    {% if timer.structure "Moon Mining == Cycle" %}
                         <div class="label label-success">
                             Moon Mining Cycle
                         </div>
-                    {% endifequal %}
-                    {% ifequal timer.structure "Other
-                        <div class="label label-default
+                    {% endif %}
+                    {% if timer.structure == "Other" %}
+                        <div class="label label-default">
                             Other
                         </div>
-                    {% endifequal %}
+                    {% endif %}
                 </td>
                 <td class="text-center" nowrap>{{ timer.eve_time | date:"Y-m-d H:i" }}</td>
                 <td class="text-center" nowrap>
@@ -187,118 +187,118 @@
                 {% endif %}
             </tr>
             {% for timer in future_timers %}
-                {% ifequal timer.important True %}
+                {% if timer.important == True %}
                     <tr class="danger">
                 {% else %}
                     <tr class="info">
-                {% endifequal %}
+                {% endif %}
                 <td style="width:150px" class="text-center">{{ timer.details }}</td>
                 <td class="text-center">
-                {% ifequal timer.objective "Hostile" %}
+                {% if timer.objective == "Hostile" %}
                     <div class="label label-danger">
                         {% trans "Hostile" %}
                     </div>
-                {% endifequal %}
-                {% ifequal timer.objective "Friendly" %}
+                {% endif %}
+                {% if timer.objective == "Friendly" %}
                     <div class="label label-primary">
                         {% trans "Friendly" %}
                     </div>
-                {% endifequal %}
-                {% ifequal timer.objective "Neutral" %}
+                {% endif %}
+                {% if timer.objective == "Neutral" %}
                     <div class="label label-default">
                         {% trans "Neutral" %}
                     </div>
-                {% endifequal %}
+                {% endif %}
                 </td>
                 <td class="text-center">
                     <a href="http://evemaps.dotlan.net/system/{{ timer.system }}">{{ timer.system }} {{ timer.planet_moon }}</a>
                 </td>
                 <td class="text-center">
-                {% ifequal timer.structure "I-HUB" %}
+                {% if timer.structure == "I-HUB" %}
                     <div class="label label-warning">
                         I-HUB
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POCO" %}
+                {% endif %}
+                {% if timer.structure == "POCO" %}
                     <div class="label label-success">
                         POCO
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POS[S]" %}
+                {% endif %}
+                {% if timer.structure == "POS[S]" %}
                     <div class="label label-info">
                         POS [S]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POS[M]" %}
+                {% endif %}
+                {% if timer.structure == "POS[M]" %}
                     <div class="label label-info">
                         POS [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POS[L]" %}
+                {% endif %}
+                {% if timer.structure == "POS[L]" %}
                     <div class="label label-info">
                         POS [L]
                     </div>
-                {% endifequal %}
-              {% ifequal timer.structure "Citadel[M]" %}
+                {% endif %}
+              {% if timer.structure == "Citadel[M]" %}
                     <div class="label label-danger">
                         Citadel [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Citadel[L]" %}
+                {% endif %}
+                {% if timer.structure == "Citadel[L]" %}
                     <div class="label label-danger">
                         Citadel [L]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Citadel[XL]" %}
+                {% endif %}
+                {% if timer.structure == "Citadel[XL]" %}
                     <div class="label label-danger">
                         Citadel [XL]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Engineering Complex[M]" %}
+                {% endif %}
+                {% if timer.structure "Engineering == Complex[M]" %}
                     <div class="label label-warning">
                         Engineering Complex [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Engineering Complex[L]" %}
+                {% endif %}
+                {% if timer.structure "Engineering == Complex[L]" %}
                     <div class="label label-warning">
                         Engineering Complex [L]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Engineering Complex[XL]" %}
+                {% endif %}
+                {% if timer.structure "Engineering == Complex[XL]" %}
                     <div class="label label-warning">
                         Engineering Complex [XL]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Station" %}
+                {% endif %}
+                {% if timer.structure == "Station" %}
                     <div class="label label-danger">
                         Station
                     </div>
-	        	{% endifequal %}
-                {% ifequal timer.structure "TCU" %}
+	        	{% endif %}
+                {% if timer.structure == "TCU" %}
                     <div class="label label-danger">
                         TCU
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Refinery[M]" %}
+                {% endif %}
+                {% if timer.structure == "Refinery[M]" %}
                     <div class="label label-warning">
                         Refinery [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Refinery[L]" %}
+                {% endif %}
+                {% if timer.structure == "Refinery[L]" %}
                     <div class="label label-warning">
                         Refinery [L]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Moon Mining Cycle" %}
+                {% endif %}
+                {% if timer.structure "Moon Mining == Cycle" %}
                     <div class="label label-success">
                         Moon Mining Cycle
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Other" %}
+                {% endif %}
+                {% if timer.structure == "Other" %}
                     <div class="label label-default">
                         Other
                     </div>
-                {% endifequal %}
+                {% endif %}
                 </td>
                 <td class="text-center" nowrap>{{ timer.eve_time | date:"Y-m-d H:i" }}</td>
                 <td class="text-center" nowrap>
@@ -337,118 +337,118 @@
                 {% endif %}
             </tr>
             {% for timer in past_timers %}
-                {% ifequal timer.important True %}
+                {% if timer.important == True %}
                     <tr class="danger">
                         {% else %}
                     <tr class="info">
-                {% endifequal %}
+                {% endif %}
                 <td style="width:150px" class="text-center">{{ timer.details }}</td>
                 <td class="text-center">
-                {% ifequal timer.objective "Hostile" %}
+                {% if timer.objective == "Hostile" %}
                     <div class="label label-danger">
                         {% trans "Hostile" %}
                     </div>
-                {% endifequal %}
-                {% ifequal timer.objective "Friendly" %}
+                {% endif %}
+                {% if timer.objective == "Friendly" %}
                     <div class="label label-primary">
                         {% trans "Friendly" %}
                     </div>
-                {% endifequal %}
-                {% ifequal timer.objective "Neutral" %}
+                {% endif %}
+                {% if timer.objective == "Neutral" %}
                     <div class="label label-default">
                         {% trans "Neutral" %}
                     </div>
-                {% endifequal %}
+                {% endif %}
                 </td>
                 <td class="text-center">
                     <a href="http://evemaps.dotlan.net/system/{{ timer.system }}">{{ timer.system }} {{ timer.planet_moon }}</a>
                 </td>
                 <td class="text-center">
-                {% ifequal timer.structure "I-HUB" %}
+                {% if timer.structure == "I-HUB" %}
                     <div class="label label-warning">
                         I-HUB
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POCO" %}
+                {% endif %}
+                {% if timer.structure == "POCO" %}
                     <div class="label label-success">
                         POCO
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POS[S]" %}
+                {% endif %}
+                {% if timer.structure == "POS[S]" %}
                     <div class="label label-info">
                         POS [S]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POS[M]" %}
+                {% endif %}
+                {% if timer.structure == "POS[M]" %}
                     <div class="label label-info">
                         POS [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "POS[L]" %}
+                {% endif %}
+                {% if timer.structure == "POS[L]" %}
                     <div class="label label-info">
                         POS [L]
                     </div>
-                {% endifequal %}
-                 {% ifequal timer.structure "Citadel[M]" %}
+                {% endif %}
+                 {% if timer.structure == "Citadel[M]" %}
                     <div class="label label-danger">
                         Citadel [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Citadel[L]" %}
+                {% endif %}
+                {% if timer.structure == "Citadel[L]" %}
                     <div class="label label-danger">
                         Citadel [L]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Citadel[XL]" %}
+                {% endif %}
+                {% if timer.structure == "Citadel[XL]" %}
                     <div class="label label-danger">
                         Citadel [XL]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Engineering Complex[M]" %}
+                {% endif %}
+                {% if timer.structure "Engineering == Complex[M]" %}
                     <div class="label label-warning">
                         Engineering Complex [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Engineering Complex[L]" %}
+                {% endif %}
+                {% if timer.structure "Engineering == Complex[L]" %}
                     <div class="label label-warning">
                         Engineering Complex [L]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Engineering Complex[XL]" %}
+                {% endif %}
+                {% if timer.structure "Engineering == Complex[XL]" %}
                     <div class="label label-warning">
                         Engineering Complex [XL]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Station" %}
+                {% endif %}
+                {% if timer.structure == "Station" %}
                     <div class="label label-danger">
                         Station
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "TCU" %}
+                {% endif %}
+                {% if timer.structure == "TCU" %}
                     <div class="label label-danger">
                         TCU
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Refinery[M]" %}
+                {% endif %}
+                {% if timer.structure == "Refinery[M]" %}
                     <div class="label label-warning">
                         Refinery [M]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Refinery[L]" %}
+                {% endif %}
+                {% if timer.structure == "Refinery[L]" %}
                     <div class="label label-warning">
                         Refinery [L]
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Moon Mining Cycle" %}
+                {% endif %}
+                {% if timer.structure "Moon Mining == Cycle" %}
                     <div class="label label-success">
                         Moon Mining Cycle
                     </div>
-                {% endifequal %}
-                {% ifequal timer.structure "Other" %}
+                {% endif %}
+                {% if timer.structure == "Other" %}
                     <div class="label label-default">
                         Other
                     </div>
-                {% endifequal %}
+                {% endif %}
                 </td>
                 <td class="text-center" nowrap>{{ timer.eve_time | date:"Y-m-d H:i" }}</td>
                 <td class="text-center" nowrap>
