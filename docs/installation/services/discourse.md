@@ -1,36 +1,41 @@
 # Discourse
 
-Add `services.modules.discourse` to your `INSTALLED_APPS` list and run migrations before continuing with this guide to ensure the service is installed.
+## Prepare Your Settings
+In your auth project's settings file, do the following:
+ - Add `'allianceauth.services.modules.discourse',` to your `INSTALLED_APPS` list 
+ - Append the following to your local.py settings file:
+ 
+
+    # Discourse Configuration
+    DISCOURSE_URL = ''
+    DISCOURSE_API_USERNAME = ''
+    DISCOURSE_API_KEY = ''
+    DISCOURSE_SSO_SECRET = ''
+
 
 ## Install Docker
 
     wget -qO- https://get.docker.io/ | sh
 
-### Get docker permissions
-
-    sudo usermod -aG docker allianceserver
-
-Logout, then back in for changes to take effect.
-
 ## Install Discourse
 
 ### Download Discourse
 
-    sudo mkdir /var/discourse
-    sudo git clone https://github.com/discourse/discourse_docker.git /var/discourse
+    mkdir /var/discourse
+    git clone https://github.com/discourse/discourse_docker.git /var/discourse
 
 ### Configure
 
     cd /var/discourse
-    sudo cp samples/standalone.yml containers/app.yml
-    sudo nano containers/app.yml
+    cp samples/standalone.yml containers/app.yml
+    nano containers/app.yml
 
 Change the following:
- - `DISCOURSE_DEVELOPER_EMAILS` should be a list of admin account email addresses separated by commas
- - `DISCOUSE_HOSTNAME` should be 127.0.0.1
- - Everything with `SMTP` depends on your mail settings. Account created through auth do not require email validation, so to ignore everything email (NOT RECOMMENDED), just change the SMTP address to something random so it'll install. Note that not setting up email means any password resets emails won't be sent, and auth cannot reset these. [There are plenty of free email services online recommended by Discourse.](https://github.com/discourse/discourse/blob/master/docs/INSTALL-email.md#recommended-email-providers-for-discourse)
+ - `DISCOURSE_DEVELOPER_EMAILS` should be a list of admin account email addresses separated by commas.
+ - `DISCOUSE_HOSTNAME` should be `discourse.example.com` or something similar.
+ - Everything with `SMTP` depends on your mail settings. [There are plenty of free email services online recommended by Discourse](https://github.com/discourse/discourse/blob/master/docs/INSTALL-email.md#recommended-email-providers-for-discourse) if you haven't set one up for auth already.
 
-To install behind apache, look for this secion:
+To install behind apache/nginx, look for this section:
 
     ...
     ## which TCP/IP ports should this container expose?
@@ -50,7 +55,7 @@ Or any other port will do, if taken. Remember this number.
 
 ### Build and launch
 
-    sudo nano /etc/default/docker
+    nano /etc/default/docker
 
 Uncomment this line:
 
@@ -58,25 +63,20 @@ Uncomment this line:
 
 Restart docker:
 
-    sudo service docker restart
+    service docker restart
 
 Now build:
 
-    sudo ./launcher bootstrap app
-    sudo ./launcher start app
+    ./launcher bootstrap app
+    ./launcher start app
 
-#### Errors:
-in case you run into not enough RAM for the docker bootstraping you might want to consider using `./discourse-setup` command. It will start bootstraping and is going to create the `/containers/app.yml` which you can edit.
-Note: every time you change something in the `app.yml` you must bootstrap again which will take between *2-8 minutes* and is accomplished by `./launcher rebuild app`.
+## Web Server Configuration
 
 ***
-## Apache config
 
-Discourse must run on its own subdomain - it can't handle routing behind an alias like '/forums'. To do so, make a new apache config:
+You will need to configure your web server to proxy requests to Discourse.
 
-    sudo nano /etc/apache2/sites-available/discourse.conf
-
-And enter the following, changing the port if you used a different number:
+A minimal apache config might look like:
 
     <VirtualHost *:80>
         ServerName discourse.example.com
@@ -84,11 +84,16 @@ And enter the following, changing the port if you used a different number:
         ProxyPassReverse / http://0.0.0.0:7890/
     </VirtualHost>
 
-Now enable proxies and restart apache:
+A minimal nginx config might look like:
 
-    sudo a2ensite discourse
-    sudo a2enmod proxy_http
-    sudo service apache2 reload
+    server {
+        listen 80;
+        server_name discourse.example.com;
+        location / {
+            include proxy_params;
+            proxy_pass http://127.0.0.1:7890;
+        }
+    }
 
 ### Setting up SSL
 
@@ -143,7 +148,7 @@ Now you are all set-up and can even enforce https in discourse settings.
 
 ### Generate admin account
 
-From the /var/discourse folder,
+From the `/var/discourse` directory,
 
     ./launcher enter app
     rake admin:create
@@ -154,12 +159,8 @@ Follow prompts, being sure to answer `y` when asked to allow admin privileges.
 
 Navigate to `discourse.example.com` and log on. Top right press the 3 lines and select `Admin`. Go to API tab and press `Generate Master API Key`.
 
-Now go to the allianceauth folder and edit settings:
-
-    nano /home/allianceserver/allianceauth/alliance_auth/settings.py
-
-Scroll down to the Discourse section and set the following:
- - `DISCOURSE_URL`: `discourse.example.com`
+Add the following values to your auth project's settings file:
+ - `DISCOURSE_URL`: `https://discourse.example.com` (do not add a trailing slash!)
  - `DISCOURSE_API_USERNAME`: the username of the admin account you generated the API key with
  - `DISCOURSE_API_KEY`: the key you just generated
 
@@ -171,12 +172,6 @@ Navigate to `discourse.example.com` and log in. Back to the admin site, scroll d
  - `sso_url`: `http://example.com/discourse/sso`
  - `sso_secret`: some secure key
 
-Save, now change settings.py and add the following:
- - `DISCOURSE_SSO_SECRET`: the secure key you just set
+Save, now set `DISCOURSE_SSO_SECRET` in your auth project's settings file to the secure key you just put in Discourse.
 
-### Enable for your members
-
-Assign discourse permissions for each auth-group that should have access to discourse.
-You might want to setup Read/Write/Delete rights per Auth group in discourse as you can limit which categories shall be accessablie per auth-group.
-
-## Done
+Finally run migrations and restart gunicorn and celery.

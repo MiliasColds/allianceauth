@@ -8,6 +8,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+venv/
 build/
 develop-eggs/
 dist/
@@ -53,13 +54,8 @@ docs/_build/
 # PyBuilder
 target/
 
-.vagrant/
-alliance_auth/settings.py
 *Thumbs.db
 nginx_config.txt
-
-# custom staticfiles
-static/*
 
 #celerybeat
 *.pid

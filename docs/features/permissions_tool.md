@@ -7,6 +7,12 @@
 
 Access to most of Alliance Auth's features are controlled by Django's permissions system. In order to help you secure your services, Alliance Auth provides a permissions auditing tool.
 
+## Installation
+
+Add `'allianceauth.permissions_tool',` to your `INSTALLED_APPS` list in your auth project's settings file.
+
+## Usage
+
 ### Access
 
 In order to grant users access to the permissions auditing tool they will need to be granted the `permissions_tool.audit_permissions` permission or be a superuser.
@@ -18,7 +24,7 @@ When a user has access to the tool they will see the "Permissions Audit" menu it
 
 The first page gives you a general overview of permissions and how many users have access to each permission.
 
-![permissions overview](https://i.imgur.com/XALVFtc.png)
+![permissions overview](/_static/images/features/permissions_tool/overview.png)
 
 **App**, **Model** and **Code Name** contain the internal details of the permission while **Name** contains the name/description you'll see in the admin panel.
 
@@ -34,6 +40,6 @@ Clicking on the **Code Name** link will take you to the [Permissions Audit Page]
 
 The permissions audit page will give you an overview of all the users who have access to this permission either directly or granted via group membership.
 
-![permissions audit](https://i.imgur.com/XjnfC9Z.png)
+![permissions audit](/_static/images/features/permissions_tool/audit.png)
 
 Please note that users may appear multiple times if this permission is granted via multiple sources.

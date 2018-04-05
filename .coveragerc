@@ -1,24 +1,13 @@
 [run]
 branch = True
 source =
-    alliance_auth
-    authentication
-    corputils
-    eveonline
-    fleetactivitytracking
-    fleetup
-    groupmanagement
-    hrapplications
-    notifications
-    optimer
-    permissions_tool
-    services
-    srp
-    timerboard
+    allianceauth
 
 omit =
     */migrations/*
     */example/*
+    */project_template/*
+    */bin/*
 
 [report]
 exclude_lines =

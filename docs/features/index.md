@@ -5,8 +5,16 @@
     :maxdepth: 1
     :caption: Features Contents
 
+    states
+    groups
+    autogroups
     hrapplications
     corpstats
-    groups
     permissions_tool
+    nameformats
+    fleetup
+    fleetactivitytracking
+    optimer
+    srp
+    timerboard
 ```

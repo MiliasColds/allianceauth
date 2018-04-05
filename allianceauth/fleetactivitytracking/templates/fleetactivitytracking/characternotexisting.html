@@ -1,0 +1,27 @@
+{% extends 'allianceauth/base.html' %}
+{% load i18n %}
+{% block page_title %}{% trans "Fleet Participation" %}{% endblock %}
+
+{% block content %}
+<div class="col-lg-12">
+    <h1 class="page-header text-center">{% trans "Character not found!" %}</h1>
+    <div class="col-lg-12 container" id="example">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">{{ character_name }}</div>
+                    <div class="panel-body">
+                        <div class="col-lg-2 col-sm-2">
+                             <img class="ra-avatar img-responsive" src="https://image.eveonline.com/Character/{{ character_id }}_128.jpg">
+                        </div>
+                        <div class="col-lg-10 col-sm-2">
+                            <div class="alert alert-danger" role="alert">{% trans "Character not registered!" %}</div>
+                            {% trans "This character is not associated with an auth account." %} <a href=" {% url 'authentication:add_character' %}">{% trans "Add it here" %}</a> {% trans "before attempting to click fleet attendance links." %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

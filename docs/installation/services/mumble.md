@@ -1,6 +1,13 @@
 # Mumble
 
-Add `services.modules.mumble` to your `INSTALLED_APPS` list and run migrations before continuing with this guide to ensure the service is installed.
+## Prepare Your Settings
+In your auth project's settings file, do the following:
+ - Add `'allianceauth.services.modules.mumble',` to your `INSTALLED_APPS` list
+ - Append the following to your local.py settings file:
+ 
+
+    # Mumble Configuration
+    MUMBLE_URL = ""
 
 ## Overview
 Mumble is a free voice chat server. While not as flashy as teamspeak, it has all the functionality and is easier to customize. And is better. I may be slightly biased.
@@ -14,10 +21,10 @@ The mumble server package can be retrieved from a repository we need to add, mum
 Now two packages need to be installed:
 
     sudo apt-get install python-software-properties mumble-server
-    
-You will also need to install the python dependencies for the authenticator script:
-    
-    pip install -r thirdparty/Mumble/requirements.txt
+
+Download the appropriate authenticator release from https://github.com/allianceauth/mumble-authenticator and install the python dependencies for it:
+
+    pip install -r requirements.txt
 
 ## Configuring Mumble
 Mumble ships with a configuration file that needs customization. By default it’s located at /etc/mumble-server.ini. Open it with your favourite text editor:
@@ -55,7 +62,7 @@ That’s it! Your server is ready to be connected to at example.com:64738
 
 ## Configuring the Authenticator
 
-The ICE authenticator lives in `allianceauth/thirdparty/Mumble/`, cd to this directory.
+The ICE authenticator lives in the mumble-authenticator repository, cd to the directory where you cloned it.
 
 Make a copy of the default config:
 
@@ -73,16 +80,14 @@ Test your configuration by starting it: `python authenticator.py`
 
 ## Running the Authenticator
 
-The authenticator needs to be running 24/7 to validate users on Mumble. The best way is to run it in a screen much like celery:
-
-    screen -dm bash -c 'python authenticator.py'
-
-Much like celery tasks, this process needs to be started every time the server reboots. It needs to be launched from this directory, so cd to this folder to launch.
+The authenticator needs to be running 24/7 to validate users on Mumble. You should check the [supervisor docs](../auth/supervisor.md) on how to achieve this.
 
 Note that groups will only be created on Mumble automatically when a user joins who is in the group.
 
 ## Making and Managing Channels
 ACL is really above the scope of this guide. Once AllianceAuth creates your groups, go ahead and follow one of the wonderful web guides available on how to set up channel ACL properly.
 
-## Setup Complete
-You’ve finished the steps required to make AllianceAuth work with Mumble. Play around with it and make it your own.
+## Prepare Auth
+In your project's settings file, set `MUMBLE_URL` to the public address of your mumble server. Do not include any leading `http://` or `mumble://`.
+
+Run migrations and restart gunicorn and celery to complete setup.

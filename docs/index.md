@@ -1,17 +1,15 @@
 
 # Alliance Auth
 
-Alliance service auth to help large scale alliances manage services. Built for "The 99 Percent" open for anyone to use
+An auth system for EVE Online to help in-game organizations manage online service access. 
 
 # Installing
 
-[Ubuntu Setup Guide](installation/auth/ubuntu.md)
-
-For other distros, adapt the procedure and find distro-specific alternatives for the [dependencies](installation/auth/dependencies.md)
+[Setup Guide](installation/auth/allianceauth.md)
 
 # Using
 
-See the [Quick Start Guide](installation/auth/quickstart.md) and learn about individual [features.](features/index.md)
+Learn about individual [features.](features/index.md)
 
 # Troubleshooting
 
